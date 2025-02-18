@@ -13,9 +13,6 @@ const baseManifest = {
   author: 'Red_lnn<lemon@redlnn.top>',
   description: '__MSG_extension_description__',
   default_locale: 'zh_CN',
-  icons: {
-    512: '/icon.png'
-  },
   host_permissions: [
     'https://www.bing.com/',
     'https://api.bing.com/',
