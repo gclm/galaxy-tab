@@ -1,0 +1,548 @@
+# Instincts generated from https://github.com/gclm/galaxy-tab
+# Generated: 2026-03-13T15:21:34.878Z
+# Version: 2.0
+
+---
+id: galaxy-tab-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Commit Length
+
+## Action
+
+Keep commit messages concise (under 50 characters)
+
+## Evidence
+
+- Average commit message length: 24 chars
+- Based on 200 commits
+
+---
+id: galaxy-tab-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: galaxy-tab-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: galaxy-tab-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: galaxy-tab-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: galaxy-tab-workflow-dependency-update
+trigger: "when doing dependency update"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Dependency Update
+
+## Action
+
+Follow the dependency-update workflow:
+1. Update package.json versions
+2. Update pnpm-lock.yaml
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: package.json, pnpm-lock.yaml
+
+---
+id: galaxy-tab-workflow-code-cleanup
+trigger: "when doing code cleanup"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Code Cleanup
+
+## Action
+
+Follow the code-cleanup workflow:
+1. Remove unused code
+2. Optimize functions
+3. Clean up Vue components
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: entrypoints/newtab/components/QuickStart/*.vue, entrypoints/newtab/components/QuickStart/utils/*.ts
+
+---
+id: galaxy-tab-workflow-localization-update
+trigger: "when doing localization update"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Localization Update
+
+## Action
+
+Follow the localization-update workflow:
+1. Update English translations
+2. Update Chinese (Simplified) translations
+3. Update Chinese (Traditional) translations
+4. Update related component files
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: locales/en.yml, locales/zh_CN.yml, locales/zh_TW.yml
+
+---
+id: galaxy-tab-workflow-settings-modification
+trigger: "when doing settings modification"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Settings Modification
+
+## Action
+
+Follow the settings-modification workflow:
+1. Update settings types
+2. Modify settings storage
+3. Update migration scripts
+4. Update settings components
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: entrypoints/newtab/scripts/settings/*.ts, entrypoints/newtab/scripts/settings/types/*.ts, entrypoints/newtab/scripts/settings/migrate/*.ts
+
+---
+id: galaxy-tab-workflow-changelog-update
+trigger: "when doing changelog update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Changelog Update
+
+## Action
+
+Follow the changelog-update workflow:
+1. Update changelog files
+2. Update changelog component
+3. Optionally update version
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: CHANGELOG.md, CHANGELOG_zh.md, entrypoints/newtab/Changelog.tsx
+
+---
+id: galaxy-tab-workflow-quickstart-enhancement
+trigger: "when doing quickstart enhancement"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Quickstart Enhancement
+
+## Action
+
+Follow the quickstart-enhancement workflow:
+1. Modify main QuickStart component
+2. Update utility functions
+3. Adjust related components
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: entrypoints/newtab/components/QuickStart/index.vue, entrypoints/newtab/components/QuickStart/utils/*.ts, entrypoints/newtab/components/QuickStart/components/*.vue
+
+---
+id: galaxy-tab-file-naming
+trigger: "When creating new files"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab File Naming
+
+## Action
+
+Use camelCase for file names
+
+## Evidence
+
+- Pattern in folder structure analysis
+- TypeScript project convention
+
+---
+id: galaxy-tab-function-naming
+trigger: "When defining functions"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Function Naming
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Code style analysis shows camelCase for functions
+- TypeScript naming conventions
+
+---
+id: galaxy-tab-class-naming
+trigger: "When defining classes"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Class Naming
+
+## Action
+
+Use PascalCase for class names
+
+## Evidence
+
+- Code style analysis shows PascalCase for classes
+- Standard TypeScript convention
+
+---
+id: galaxy-tab-constant-naming
+trigger: "When defining constants"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Code style analysis shows SCREAMING_SNAKE_CASE for constants
+
+---
+id: galaxy-tab-import-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Import Style
+
+## Action
+
+Use alias imports
+
+## Evidence
+
+- Import style analysis shows alias pattern
+
+---
+id: galaxy-tab-export-style
+trigger: "When exporting from modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Export style analysis shows named exports pattern
+
+---
+id: galaxy-tab-error-handling
+trigger: "When handling errors"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Error Handling
+
+## Action
+
+Use try-catch blocks
+
+## Evidence
+
+- Error handling analysis shows try-catch style
+
+---
+id: galaxy-tab-commit-emoji
+trigger: "When making commits"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Commit Emoji
+
+## Action
+
+Start commit messages with appropriate emoji
+
+## Evidence
+
+- :beers: undefined?
+- :wheelchair: 默认使用Bing作为搜索引擎
+- :globe_with_meridians: 更新翻译
+- :technologist: 调整了一些变量名
+
+---
+id: galaxy-tab-commit-mixed-language
+trigger: "When writing commit messages"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Commit Mixed Language
+
+## Action
+
+Use Chinese for descriptive messages when appropriate
+
+## Evidence
+
+- :wheelchair: 默认使用Bing作为搜索引擎
+- :globe_with_meridians: 更新翻译
+- :bug: 修复快速启动子菜单部分区域点击不生效的问题
+
+---
+id: galaxy-tab-dependency-update
+trigger: "When updating dependencies"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Dependency Update
+
+## Action
+
+Update both package.json and pnpm-lock.yaml together
+
+## Evidence
+
+- dependency-update workflow occurs 4x/month
+- Always involves both package.json and pnpm-lock.yaml
+
+---
+id: galaxy-tab-code-cleanup
+trigger: "When cleaning up code"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Code Cleanup
+
+## Action
+
+Focus on QuickStart components and utility files
+
+## Evidence
+
+- code-cleanup workflow targets QuickStart/*.vue and utils/*.ts files
+- Occurs 3x/month
+
+---
+id: galaxy-tab-localization
+trigger: "When updating translations"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Localization
+
+## Action
+
+Update all three language files: en.yml, zh_CN.yml, zh_TW.yml
+
+## Evidence
+
+- localization-update workflow always involves all three locale files
+- Occurs 3x/month
+
+---
+id: galaxy-tab-settings-modification
+trigger: "When modifying settings"
+confidence: 0.88
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Settings Modification
+
+## Action
+
+Update types, storage, migration scripts, and components together
+
+## Evidence
+
+- settings-modification workflow involves types, storage, and migration files
+- Occurs 3x/month
+
+---
+id: galaxy-tab-changelog-update
+trigger: "When documenting changes"
+confidence: 0.8
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Changelog Update
+
+## Action
+
+Update both CHANGELOG.md files and the Changelog.tsx component
+
+## Evidence
+
+- changelog-update workflow involves both markdown files and TSX component
+- Occurs 2x/month
+
+---
+id: galaxy-tab-quickstart-enhancement
+trigger: "When enhancing QuickStart feature"
+confidence: 0.82
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Quickstart Enhancement
+
+## Action
+
+Modify main component, utilities, and related components together
+
+## Evidence
+
+- quickstart-enhancement workflow targets main component, utils, and sub-components
+- Occurs 4x/month
+
