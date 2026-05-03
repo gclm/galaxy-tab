@@ -1,0 +1,582 @@
+# Instincts generated from https://github.com/gclm/galaxy-tab
+# Generated: 2026-05-03T05:41:48.421Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: galaxy-tab-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Commit Length
+
+## Action
+
+Keep commit messages concise (~23 characters)
+
+## Evidence
+
+- Average commit message length: 23 chars
+- Based on 100 commits
+
+---
+id: galaxy-tab-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: galaxy-tab-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: galaxy-tab-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: galaxy-tab-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: galaxy-tab-workflow-update-dependencies
+trigger: "when doing update dependencies"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Update Dependencies
+
+## Action
+
+Follow the update-dependencies workflow:
+1. Update package.json with new dependency versions
+2. Update pnpm-lock.yaml to lock new versions
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: package.json, pnpm-lock.yaml
+
+---
+id: galaxy-tab-workflow-update-changelog
+trigger: "when doing update changelog"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Update Changelog
+
+## Action
+
+Follow the update-changelog workflow:
+1. Edit CHANGELOG.md
+2. Edit CHANGELOG_zh.md
+3. Edit entrypoints/newtab/Changelog.tsx
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: CHANGELOG.md, CHANGELOG_zh.md, entrypoints/newtab/Changelog.tsx
+
+---
+id: galaxy-tab-workflow-feature-addition-or-settings-enhancement
+trigger: "when doing feature addition or settings enhancement"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Feature Addition Or Settings Enhancement
+
+## Action
+
+Follow the feature-addition-or-settings-enhancement workflow:
+1. Edit or add Vue component(s) under components/SettingsPage/Settings/
+2. Update settings script(s) in scripts/settings/
+3. Update or add migration scripts in scripts/settings/migrate/
+4. Update or add type definition files in scripts/settings/types/
+5. Update locale files for new/changed labels
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: entrypoints/newtab/components/SettingsPage/Settings/*.vue, entrypoints/newtab/scripts/settings/index.ts, entrypoints/newtab/scripts/settings/migrate/*.ts
+
+---
+id: galaxy-tab-workflow-refactor-or-restructure-codebase
+trigger: "when doing refactor or restructure codebase"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Refactor Or Restructure Codebase
+
+## Action
+
+Follow the refactor-or-restructure-codebase workflow:
+1. Rename or move files/directories (e.g., quickstart → shortcut, move utils/shared)
+2. Update imports and references across affected files
+3. Refactor code for naming, structure, or performance
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: entrypoints/newtab/components/QuickStart/*, entrypoints/newtab/components/Shortcut/*, shared/settings/*
+
+---
+id: galaxy-tab-workflow-css-styling-and-theme-adjustment
+trigger: "when doing css styling and theme adjustment"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Css Styling And Theme Adjustment
+
+## Action
+
+Follow the css-styling-and-theme-adjustment workflow:
+1. Edit SCSS/CSS files under styles/ or assets/styles/
+2. Edit Vue components to update class names or styling
+3. Format or reorder CSS rules
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: styles/element/*.scss, entrypoints/newtab/styles/index.scss, assets/styles/element/*.scss
+
+---
+id: galaxy-tab-workflow-add-or-update-localization
+trigger: "when doing add or update localization"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/gclm/galaxy-tab
+---
+
+# Galaxy Tab Workflow Add Or Update Localization
+
+## Action
+
+Follow the add-or-update-localization workflow:
+1. Edit or add entries in locales/*.yml
+2. Update related Vue components or settings to use new localization keys
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: locales/en.yml, locales/zh_CN.yml, locales/zh_TW.yml
+
+---
+id: galaxy-tab-instinct-camelcase-files
+trigger: "When creating or renaming a file in the codebase"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Camelcase Files
+
+## Action
+
+Use camelCase for file names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.files
+- Consistent file naming in src and components folders
+
+---
+id: galaxy-tab-instinct-camelcase-functions
+trigger: "When defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Camelcase Functions
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: galaxy-tab-instinct-pascalcase-classes
+trigger: "When defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Pascalcase Classes
+
+## Action
+
+Use PascalCase for class names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: galaxy-tab-instinct-screaming-constants
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Screaming Constants
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: galaxy-tab-instinct-import-alias
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Import Alias
+
+## Action
+
+Use alias import style
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: galaxy-tab-instinct-named-exports
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Named Exports
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: galaxy-tab-instinct-try-catch-errors
+trigger: "When handling errors in code"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Try Catch Errors
+
+## Action
+
+Use try-catch blocks for error handling
+
+## Evidence
+
+- Pattern in errorHandling.style
+
+---
+id: galaxy-tab-instinct-git-emoji-prefix
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Git Emoji Prefix
+
+## Action
+
+Prefix the commit message with an appropriate emoji (e.g., :bug:, :memo:, :arrow_up:)
+
+## Evidence
+
+- Seen in commits: ':wheelchair: 默认使用Bing作为搜索引擎', ':bug: 修复自动聚焦搜索框不生效', ':memo: 更新日志', ':arrow_up: Bump vite from 6.2.2 to 6.2.3 (#21)'
+
+---
+id: galaxy-tab-instinct-git-short-commits
+trigger: "When writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Git Short Commits
+
+## Action
+
+Keep commit messages concise, typically under 30 characters
+
+## Evidence
+
+- commits.averageLength = 23
+- Examples of short commit messages
+
+---
+id: galaxy-tab-instinct-update-dependencies
+trigger: "When someone wants to update project dependencies (e.g., via dependabot or manually)"
+confidence: 0.99
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Update Dependencies
+
+## Action
+
+Update package.json and pnpm-lock.yaml to newer dependency versions
+
+## Evidence
+
+- Workflow: update-dependencies
+- Commits: 'Update package.json with new dependency versions', 'Update pnpm-lock.yaml to lock new versions'
+
+---
+id: galaxy-tab-instinct-update-changelog
+trigger: "When someone wants to document changes for a new release or bugfix"
+confidence: 0.98
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Update Changelog
+
+## Action
+
+Edit CHANGELOG.md, CHANGELOG_zh.md, and entrypoints/newtab/Changelog.tsx
+
+## Evidence
+
+- Workflow: update-changelog
+- Commits: 'Edit CHANGELOG.md', 'Edit CHANGELOG_zh.md', 'Edit entrypoints/newtab/Changelog.tsx'
+
+---
+id: galaxy-tab-instinct-feature-addition-settings
+trigger: "When someone wants to add a new feature or setting"
+confidence: 0.92
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Feature Addition Settings
+
+## Action
+
+Edit or add Vue components under SettingsPage/Settings, update settings scripts, migrations, types, and locale files
+
+## Evidence
+
+- Workflow: feature-addition-or-settings-enhancement
+- Files: entrypoints/newtab/components/SettingsPage/Settings/*.vue, scripts/settings/*, locales/*.yml
+
+---
+id: galaxy-tab-instinct-refactor-restructure
+trigger: "When someone wants to improve code structure, naming, or organization"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Refactor Restructure
+
+## Action
+
+Rename or move files/directories, update imports/references, and refactor code for maintainability
+
+## Evidence
+
+- Workflow: refactor-or-restructure-codebase
+- Files: entrypoints/newtab/components/QuickStart/*, Shortcut/*, shared/settings/*, utils/*
+
+---
+id: galaxy-tab-instinct-css-styling-theme
+trigger: "When someone wants to change visual styles or refactor CSS for maintainability"
+confidence: 0.87
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Css Styling Theme
+
+## Action
+
+Edit SCSS/CSS files and Vue components for style or class name changes
+
+## Evidence
+
+- Workflow: css-styling-and-theme-adjustment
+- Files: styles/element/*.scss, entrypoints/newtab/styles/index.scss, entrypoints/newtab/components/*.vue
+
+---
+id: galaxy-tab-instinct-add-update-localization
+trigger: "When someone wants to add or update translations for UI changes"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Add Update Localization
+
+## Action
+
+Edit or add entries in locales/*.yml and update related components/settings
+
+## Evidence
+
+- Workflow: add-or-update-localization
+- Files: locales/en.yml, locales/zh_CN.yml, locales/zh_TW.yml, locales/zh_HK.yml
+
+---
+id: galaxy-tab-instinct-test-location-separate
+trigger: "When adding or updating tests"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Test Location Separate
+
+## Action
+
+Place test files in a separate test directory, not alongside source files
+
+## Evidence
+
+- architecture.folderStructure.testLocation = separate
+
+---
+id: galaxy-tab-instinct-test-typescript
+trigger: "When writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: gclm/galaxy-tab
+---
+
+# Galaxy Tab Instinct Test Typescript
+
+## Action
+
+Write tests in TypeScript
+
+## Evidence
+
+- codeStyle.language = TypeScript
+- architecture.folderStructure.testLocation = separate
+
