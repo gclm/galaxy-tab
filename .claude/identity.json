@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "technicalLevel": "technical",
+  "preferredStyle": {
+    "verbosity": "moderate",
+    "codeComments": true,
+    "explanations": true
+  },
+  "domains": [
+    "typescript",
+    "vue"
+  ],
+  "suggestedBy": "ecc-tools-repo-analysis",
+  "createdAt": "2026-05-03T05:41:48.421Z"
+}
