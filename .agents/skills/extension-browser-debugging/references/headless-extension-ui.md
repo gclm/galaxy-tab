@@ -30,8 +30,7 @@ pnpm build
 先等待 Service Worker，再从 `worker.url()` 推导扩展 ID 和 `newtab.html` 地址。不要猜测扩展 ID，也不必操作浏览器的“新建标签”按钮：在 context 中创建页面并导航到扩展内部 URL，就能获得等价的新标签页运行环境。
 
 ```js
-const worker =
-  context.serviceWorkers()[0] || (await context.waitForEvent('serviceworker'))
+const worker = context.serviceWorkers()[0] || (await context.waitForEvent('serviceworker'))
 const newtabUrl = new URL('newtab.html', worker.url()).href
 const page = await context.newPage()
 await page.goto(newtabUrl)

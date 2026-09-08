@@ -24,8 +24,7 @@ const context = await chromium.launchPersistentContext(join(profileRoot, 'profil
 })
 
 try {
-  const worker =
-    context.serviceWorkers()[0] || (await context.waitForEvent('serviceworker'))
+  const worker = context.serviceWorkers()[0] || (await context.waitForEvent('serviceworker'))
   const newtabUrl = new URL('newtab.html', worker.url()).href
   const page = await context.newPage()
   const errors = []
