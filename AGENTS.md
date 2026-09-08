@@ -1,73 +1,40 @@
 # AGENTS.md
 
-本仓库是一个基于 WXT、Vue 3 和 TypeScript 的浏览器扩展项目。
-请将此文件作为 AI 编码代理的快速操作指南。
+这是一个基于 WXT、Vue 3 与 TypeScript 的浏览器新标签页扩展。
 
-## 优先阅读
+## 定位代码
 
-- 项目概览与开发说明：[README.md](README.md)
-- 英文说明：[README_en.md](README_en.md)
-- 发布历史：[CHANGELOG.md](docs/CHANGELOG.md)
-- 待优化事项（可能不存在）：[TODO.md](TODO.md)
+- 产品与开发说明：[README.md](README.md)；英文说明：[README_en.md](README_en.md)；发布历史：[docs/CHANGELOG.md](docs/CHANGELOG.md)。
+- 后台 Service Worker：[entrypoints/background/index.ts](entrypoints/background/index.ts)。
+- 新标签页启动顺序：[entrypoints/newtab/init.ts](entrypoints/newtab/init.ts) → [entrypoints/newtab/main.ts](entrypoints/newtab/main.ts)；UI 根组件：[entrypoints/newtab/App.vue](entrypoints/newtab/App.vue)。
+- 共享域：设置 [shared/settings](shared/settings)、同步 [shared/sync](shared/sync)、主题 [shared/theme](shared/theme)。
+- i18n 运行时：[shared/i18n.ts](shared/i18n.ts)；语言资源：[locales](locales)。
+- Manifest、权限与浏览器差异集中在 [wxt.config.ts](wxt.config.ts)。
 
-## 环境与命令
+## 变更约束
 
-- 使用 Node.js 24+、TypeScript 6
-- 安装依赖：`pnpm install`
-- 启动开发（默认 Chrome）：`pnpm dev`
-- Firefox 开发：`pnpm dev:firefox`
-- Edge 开发：`pnpm dev:edge`
-- 类型检查：`pnpm type-check`
-- 全量 Lint：`pnpm lint`
-- 构建：`pnpm build` / `pnpm build:firefox` / `pnpm build:edge`
-- 打包：`pnpm zip` / `pnpm zip:firefox` / `pnpm zip:edge`
+- 优先使用 Vue SFC 的 `script setup` 与 TypeScript；复用 `@/*`、`@newtab/*` 路径别名。
+- 变更保持小而聚焦；先检查工作区和暂存区，保留不属于当前任务的改动。
+- 样式优先使用 class 选择器和现代 CSS；尽量避免 `scoped`、标签名与 ID 选择器。仅在现代 CSS 无法等价表达时少量使用 SCSS 特性。
+- 以简洁、高效、低复杂度为优先，避免过度设计、抽象和冗余；若修补会堆叠大量条件或临时兼容层，优先重写受影响的局部实现。
+- 不手动编辑生成声明：[types/auto-imports.d.ts](types/auto-imports.d.ts)、[types/components.d.ts](types/components.d.ts)。
+- 新增或重命名 i18n 键时，同步更新 [locales](locales) 中所有语言，并保持 `newtab`、`settings`、`sync`、`faq` 命名空间一致。
 
-## 架构地图
+## 设置与后台边界
 
-- 后台 Service Worker 入口：[entrypoints/background/index.ts](entrypoints/background/index.ts)
-- 新标签页启动顺序：[entrypoints/newtab/init.ts](entrypoints/newtab/init.ts) 然后 [entrypoints/newtab/main.ts](entrypoints/newtab/main.ts)
-- 新标签页 UI 根组件：[entrypoints/newtab/App.vue](entrypoints/newtab/App.vue)
-- 共享设置域：[shared/settings](shared/settings)
-- 共享同步域：[shared/sync](shared/sync)
-- 共享主题域：[shared/theme](shared/theme)
-- i18n 运行时初始化：[shared/i18n.ts](shared/i18n.ts)
-- 语言资源目录：[locales](locales)
+- 设置项删除或改名时，同步更新当前 Schema、存储迁移注册、迁移实现与默认值：
+  [shared/settings/current.ts](shared/settings/current.ts)、[shared/settings/settingsStorage.ts](shared/settings/settingsStorage.ts)、[shared/settings/migrate](shared/settings/migrate)、[shared/settings/default.ts](shared/settings/default.ts)。新增设置项不升级配置版本。
+- 保持 [shared/settings/bootstrap.ts](shared/settings/bootstrap.ts) 的启动兼容逻辑稳定。
+- 后台同步以最新快照为语义，修改时保持 [entrypoints/background/index.ts](entrypoints/background/index.ts) 的合并行为。
 
-## 仓库约定
+## 验证
 
-- UI 组件优先使用 Vue SFC 的 `script setup` + TypeScript。
-- 优先使用 [tsconfig.app.json](tsconfig.app.json) 中已有路径别名：`@/*` 和 `@newtab/*`。
-- 变更尽量小而聚焦；除非明确要求，不做大范围重构。
-- 遵循现有 Lint 体系：[eslint.config.ts](eslint.config.ts) 与 [stylelint.config.ts](stylelint.config.ts)。
-- 不要手动编辑生成的声明文件：[types/auto-imports.d.ts](types/auto-imports.d.ts)、[types/components.d.ts](types/components.d.ts)。
+- 测试只在能覆盖真实风险、回归场景或关键行为时编写；断言应能在目标行为被破坏时失败，不为测试数量或通过率添加必然通过的测试。
+- TypeScript/Vue 改动：运行 `pnpm type-check`。
+- 静态检查优先使用 `pnpm lint:check`；需要自动修复时运行 `pnpm lint` 后复查其附带改动。
+- 修改 Manifest、构建或浏览器差异时，运行对应的 `pnpm build`、`pnpm build:edge` 或 `pnpm build:firefox`。
+- 验证真实扩展 UI、Service Worker、`chrome.storage`、IndexedDB 或新标签页交互时，使用 [extension-browser-debugging Skill](.agents/skills/extension-browser-debugging/SKILL.md)。它以独立临时浏览器 profile 加载构建产物；源码级 Vite 测试与真实扩展 UI 测试的边界见该 Skill。
 
-## 高风险区域
+## 提交
 
-- 设置 Schema 发生变化时，如果发生删除或更名必须同步更新迁移逻辑，添加新项不用升级配置版本。
-- 如果设置结构变化，需要同时更新以下位置：
-  - 当前版本：[shared/settings/current.ts](shared/settings/current.ts)
-  - 存储迁移注册：[shared/settings/settingsStorage.ts](shared/settings/settingsStorage.ts)
-  - 迁移实现：[shared/settings/migrate](shared/settings/migrate)
-  - 默认值：[shared/settings/default.ts](shared/settings/default.ts)
-- 启动阶段的向后兼容检查要保持稳定：[shared/settings/bootstrap.ts](shared/settings/bootstrap.ts)
-- 后台同步逻辑要保持稳定；该逻辑有意合并为最新快照：[entrypoints/background/index.ts](entrypoints/background/index.ts)
-
-## i18n 规则
-
-- 命名空间使用要与 [shared/i18n.ts](shared/i18n.ts) 保持一致：`newtab`、`settings`、`sync`、`faq`。
-- 新增或重命名翻译键时，要同步更新 [locales](locales) 下所有语言。
-
-## 浏览器差异说明
-
-- Manifest 与浏览器权限差异统一收敛在 [wxt.config.ts](wxt.config.ts)。
-- 本地浏览器可执行文件覆盖配置在 [web-ext.config.ts](web-ext.config.ts)，与机器环境相关。
-
-## 完成前校验清单
-
-- 对任意 TypeScript/Vue 逻辑改动，执行 `pnpm type-check`。
-- 执行 `pnpm lint` 做样式与静态检查。
-- 如果构建流程或 Manifest 行为变化，执行对应的 build/zip 命令。
-
-## Git 提交说明
-
-使用 gitmoji 作为 commit message 的开头，代替 `feat:` 等描述性前缀，后面跟简短描述，必要时添加更详细的正文说明
+提交信息以 gitmoji 开头，后接简短中文描述；按独立功能拆分提交，避免混入格式化或无关改动。
