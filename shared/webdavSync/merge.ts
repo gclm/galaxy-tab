@@ -391,26 +391,71 @@ function mergeOptional(
 
   if (local?.wallpapers && remote?.wallpapers) {
     const wallpapers: NonNullable<SyncSnapshotV1['optional']>['wallpapers'] = {}
-    const light = mergeAtomic(
+    for (const variant of ['light', 'dark'] as const) {
+      const empty = { items: [], order: [], fixedId: '' }
+      const before = base?.wallpapers?.[variant] ?? empty
+      const ours = local.wallpapers[variant] ?? empty
+      const theirs = remote.wallpapers[variant] ?? empty
+      const path = `optional.wallpapers.${variant}`
+      const items = mergeEntities(
+        'wallpaper',
+        `${path}.items`,
+        before.items,
+        ours.items,
+        theirs.items,
+        conflicts,
+      )
+      const validIds = new Set(items.map((item) => item.id))
+      const sharedIds = new Set(
+        before.order.filter(
+          (id) => validIds.has(id) && ours.order.includes(id) && theirs.order.includes(id),
+        ),
+      )
+      const order = mergeOrder(
+        'wallpaper',
+        `${path}.order`,
+        before.order,
+        ours.order,
+        theirs.order,
+        sharedIds,
+        conflicts,
+      )
+      const fixedId = before.fixedId
+        ? (mergeAtomic(
+            'wallpaper',
+            `${path}.fixedId`,
+            before.fixedId,
+            ours.fixedId,
+            theirs.fixedId,
+            conflicts,
+          ) as string)
+        : ours.fixedId || theirs.fixedId
+      // 新增项保留在所属列表的相邻项旁，不能因三方合并被统一挪到末尾。
+      const mergedOrder = [...order]
+      for (const sequence of [ours.order, theirs.order]) {
+        for (const [index, id] of sequence.entries()) {
+          if (!validIds.has(id) || mergedOrder.includes(id)) continue
+          const next = sequence
+            .slice(index + 1)
+            .find((candidate) => mergedOrder.includes(candidate))
+          mergedOrder.splice(next ? mergedOrder.indexOf(next) : mergedOrder.length, 0, id)
+        }
+      }
+      wallpapers[variant] = {
+        items,
+        order: mergedOrder,
+        fixedId: validIds.has(fixedId) ? fixedId : (items[0]?.id ?? ''),
+      }
+    }
+    wallpapers.rotation = mergeJson(
       'wallpaper',
-      'optional.wallpapers.light',
-      base?.wallpapers?.light ? canonicalize(base.wallpapers.light) : MISSING,
-      local.wallpapers.light ? canonicalize(local.wallpapers.light) : MISSING,
-      remote.wallpapers.light ? canonicalize(remote.wallpapers.light) : MISSING,
+      'optional.wallpapers.rotation',
+      canonicalize(base?.wallpapers?.rotation ?? { enabled: false, order: 'random' }),
+      canonicalize(local.wallpapers.rotation ?? { enabled: false, order: 'random' }),
+      canonicalize(remote.wallpapers.rotation ?? { enabled: false, order: 'random' }),
       conflicts,
-    )
-    const dark = mergeAtomic(
-      'wallpaper',
-      'optional.wallpapers.dark',
-      base?.wallpapers?.dark ? canonicalize(base.wallpapers.dark) : MISSING,
-      local.wallpapers.dark ? canonicalize(local.wallpapers.dark) : MISSING,
-      remote.wallpapers.dark ? canonicalize(remote.wallpapers.dark) : MISSING,
-      conflicts,
-    )
-    if (light !== MISSING)
-      wallpapers.light = light as unknown as NonNullable<typeof wallpapers.light>
-    if (dark !== MISSING) wallpapers.dark = dark as unknown as NonNullable<typeof wallpapers.dark>
-    if (wallpapers.light || wallpapers.dark) result.wallpapers = wallpapers
+    ) as unknown as typeof wallpapers.rotation
+    result.wallpapers = wallpapers
   } else {
     result.wallpapers = local?.wallpapers ?? remote?.wallpapers
   }

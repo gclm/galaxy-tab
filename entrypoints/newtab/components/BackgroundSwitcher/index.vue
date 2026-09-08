@@ -1,147 +1,285 @@
 <script setup lang="ts">
 import './bg-switcher.scss'
 import { useDark, useElementSize } from '@vueuse/core'
-import { storeToRefs } from 'pinia'
 
-import type { UploadRequestOptions } from 'element-plus'
+import { DragDropProvider, type DragEndEvent } from '@dnd-kit/vue'
 import { useTranslation } from 'i18next-vue'
-import CloseRound from '~icons/ic/round-close'
 import DownloadRound from '~icons/ic/round-download'
-import FolderCopyRound from '~icons/ic/round-folder-copy'
-import InsertLinkRound from '~icons/ic/round-insert-link'
 import LaunchRound from '~icons/ic/round-launch'
-import TripOriginRound from '~icons/ic/round-trip-origin'
-import UploadRound from '~icons/ic/round-upload'
-import Brightness6Twotone from '~icons/ic/twotone-brightness-6'
-import CloudQueueTwotone from '~icons/ic/twotone-cloud-queue'
-import DarkModeTwotone from '~icons/ic/twotone-dark-mode'
-import HideImageTwotone from '~icons/ic/twotone-hide-image'
-import LightModeTwotone from '~icons/ic/twotone-light-mode'
 
 import { BgType } from '@/shared/enums'
-import { type BingWallpaperResolution, useSettingsStore } from '@/shared/settings'
+import { useSettingsStore, type BingWallpaperResolution } from '@/shared/settings'
+import { idbGet } from '@/shared/storage/idb'
+import {
+  addWallpaper,
+  clearWallpaperThumbnails,
+  removeWallpapers,
+  reorderWallpapers,
+  updateWallpaperLibrary,
+  wallpaperStore,
+  type WallpaperItem,
+  type WallpaperVariant,
+} from '@/shared/wallpaperLibrary'
+import { sha256Hex } from '@/shared/webdavSync/canonical'
 
-import Bing from '@newtab/assets/bing_gray.svg'
 import BaseDialog from '@newtab/components/BaseDialog.vue'
-import { bingWallpaperURLGetter, useWallpaperUrlStore } from '@newtab/shared/wallpaper'
+import { bingWallpaperURLGetter, useLocalWallpaperStore } from '@newtab/shared/wallpaper'
+import { readWallpaperMetadata } from '@newtab/shared/wallpaper/thumbnail'
 
 import useBackgroundSwitcher from './useBackgroundSwitcher'
+import WallpaperSortableItem from './WallpaperSortableItem.vue'
 
+const opened = defineModel<boolean>({ required: true })
 const { t } = useTranslation('settings')
-
-const requestedVisible = defineModel<boolean>({ required: true })
-const opened = ref(false)
-let openRequestVersion = 0
+const settings = useSettingsStore()
+const local = useLocalWallpaperStore()
+const isDark = useDark()
+const variant = ref<WallpaperVariant>(isDark.value ? 'dark' : 'light')
+const managing = ref(false)
+const expanded = ref(false)
+const selected = ref<string[]>([])
+const busy = ref(false)
+const filesInput = useTemplateRef('filesInput')
+const grid = useTemplateRef('grid')
+const { width } = useElementSize(grid)
+const columns = computed(() => (width.value < 350 ? 2 : width.value < 480 ? 3 : 4))
+const items = computed(() => local.library[variant.value].items)
+const visibleItems = computed(() =>
+  expanded.value || managing.value ? items.value : items.value.slice(0, columns.value * 2 - 1),
+)
+const thumbnails = reactive<Record<string, string>>({})
+const thumbnailHashes = new Map<string, string | undefined>()
+const thumbnailTasks = new Map<string, Promise<void>>()
+const thumbnailLanes = [Promise.resolve(), Promise.resolve()]
+let thumbnailLane = 0
+let thumbnailVersion = 0
+const { tempOnlineUrl, changeOnlineBg, onlineImageWarn } = useBackgroundSwitcher()
+const bingSrc = bingWallpaperURLGetter.getBgUrl()
+const bingInfo = bingWallpaperURLGetter.getInfo()
+const resolutionBusy = ref(false)
+const groups = ['light', 'dark'] as const
+const label = (key: string) => t(`background.library.${key}`)
 
 watch(
-  requestedVisible,
-  async (visible) => {
-    const requestVersion = ++openRequestVersion
-    if (!visible) {
-      opened.value = false
+  opened,
+  async (value) => {
+    if (!value) {
+      releaseThumbnails()
       return
     }
-
-    // Bing 背景未启用时，Background 不会初始化缓存；弹窗需要在展示前自行恢复预览。
-    try {
-      await bingWallpaperURLGetter.init()
-    } catch (error) {
-      console.error('[background-switcher] Failed to initialize Bing wallpaper preview:', error)
-    }
-
-    if (requestVersion === openRequestVersion && requestedVisible.value) {
-      opened.value = true
-    }
+    await local.init()
+    void bingWallpaperURLGetter.init().catch(console.error)
+  },
+  { immediate: true },
+)
+watch(variant, () => {
+  selected.value = []
+  expanded.value = false
+})
+watch(
+  [visibleItems, variant, opened],
+  () => {
+    if (opened.value) for (const item of visibleItems.value) void loadThumbnail(variant.value, item)
   },
   { immediate: true },
 )
 
-watch(opened, (visible) => {
-  if (!visible && requestedVisible.value) requestedVisible.value = false
-})
-
-const settings = useSettingsStore()
-const wallpaperUrlStore = useWallpaperUrlStore()
-const { lightUrl: localBgUrl, darkUrl: localDarkBgUrl } = storeToRefs(wallpaperUrlStore)
-
-const isDark = useDark()
-const customLocalContentRef = useTemplateRef('customLocalContentRef')
-
-const { height: customLocalContentHeight } = useElementSize(customLocalContentRef)
-
-function open(url: string) {
-  if (url.length === 0) return
-  window.open(url, '_blank')
-}
-
-const isLocalBg = computed(() => settings.background.bgType === BgType.Local)
-const isOnlineBg = computed(() => settings.background.bgType === BgType.Online)
-const isNoneBg = computed(() => settings.background.bgType === BgType.None)
-const isVideoBg = computed(
-  () =>
-    isLocalBg.value &&
-    (settings.background.local.mediaType === 'video' ||
-      settings.background.localDark.mediaType === 'video'),
-)
-
-const {
-  isDarkBg,
-  metaLight,
-  metaDark,
-  formatBytes,
-  beforeBackgroundUpload,
-  handleUpload,
-  deleteLocalBg,
-  tempOnlineUrl,
-  changeOnlineBg,
-  onlineImageWarn,
-} = useBackgroundSwitcher()
-
-function handleNoneBg() {
-  settings.background.bgType = BgType.None
-  if (settings.theme.monetColor) {
-    ElMessage.info(t('background.warning.monetColorDisabled'))
-    settings.theme.monetColor = false
+function releaseThumbnails() {
+  thumbnailVersion++
+  for (const key of Object.keys(thumbnails)) {
+    URL.revokeObjectURL(thumbnails[key]!)
+    delete thumbnails[key]
   }
 }
-
-const isShowDeleteIcon = computed(() =>
-  Boolean(isDarkBg.value ? settings.background.localDark.id : settings.background.local.id),
-)
-const bingWallpaperSrc = bingWallpaperURLGetter.getBgUrl()
-const bingWallpaperInfo = bingWallpaperURLGetter.getInfo()
-const isBingResolutionLoading = ref(false)
-const bingResolutionOptions: ReadonlyArray<{
-  label: string
-  value: BingWallpaperResolution
-}> = [
-  { label: '1080P', value: '1080p' },
-  { label: '4K (UHD)', value: 'uhd' },
-]
-
-async function handleBingResolutionChange(resolution: BingWallpaperResolution) {
-  if (isBingResolutionLoading.value || resolution === settings.background.bing.resolution) return
-
-  isBingResolutionLoading.value = true
+onUnmounted(releaseThumbnails)
+async function loadThumbnail(group: WallpaperVariant, item: WallpaperItem) {
+  const key = `${group}:${item.id}`
+  if (thumbnails[key] && thumbnailHashes.get(key) !== item.sha256) {
+    URL.revokeObjectURL(thumbnails[key]!)
+    delete thumbnails[key]
+  }
+  if (thumbnails[key] || thumbnailTasks.has(key)) return
+  const version = thumbnailVersion
+  const lane = thumbnailLane++ % 2
+  const task = thumbnailLanes[lane]!.then(async () => {
+    if (!opened.value || version !== thumbnailVersion) return
+    let thumbnail = await idbGet('wallpaperLibrary', `thumbnail:${key}`)
+    if (!(thumbnail instanceof Blob) && !item.metadataFailed) {
+      const blob = await idbGet(wallpaperStore(group), item.id)
+      if (!blob) {
+        await updateWallpaperLibrary((library) => {
+          const current = library[group].items.find((value) => value.id === item.id)
+          if (current) current.metadataFailed = true
+        })
+        await local.reload()
+        return
+      }
+      try {
+        const result = await readWallpaperMetadata(blob)
+        thumbnail = result.thumbnail
+        await updateWallpaperLibrary(async (library, tx) => {
+          const current = library[group].items.find((value) => value.id === item.id)
+          if (!current) return
+          Object.assign(current, result.metadata)
+          if (result.thumbnail)
+            await tx.objectStore('wallpaperLibrary').put(result.thumbnail, `thumbnail:${key}`)
+        })
+        await local.reload()
+      } catch {
+        await updateWallpaperLibrary((library) => {
+          const current = library[group].items.find((value) => value.id === item.id)
+          if (current) current.metadataFailed = true
+        })
+        await local.reload()
+      }
+    }
+    if (thumbnail instanceof Blob && version === thumbnailVersion && opened.value) {
+      thumbnails[key] = URL.createObjectURL(thumbnail)
+      thumbnailHashes.set(key, item.sha256)
+    }
+  })
+    .catch(console.error)
+    .finally(() => thumbnailTasks.delete(key))
+  thumbnailLanes[lane] = task
+  thumbnailTasks.set(key, task)
+  await task
+}
+function metadata(item: WallpaperItem) {
+  const resolution =
+    item.width && item.height
+      ? `${item.width} × ${item.height}`
+      : label(item.metadataFailed ? 'unavailable' : 'loading')
+  return item.duration ? `${resolution} · ${Math.round(item.duration)}s` : resolution
+}
+async function importFiles(files: File[]) {
+  if (busy.value || !files.length) return
+  busy.value = true
+  const group = variant.value
+  const failures: string[] = []
   try {
-    const cached = await bingWallpaperURLGetter.setResolution(resolution)
-    if (!cached) ElMessage.warning(t('background.warning.bingResolutionCacheFailed'))
-  } catch (error) {
-    console.error('[background-switcher] Failed to change Bing wallpaper resolution:', error)
+    // 每批最多两个解码任务，提交仍按用户选择顺序。
+    for (let index = 0; index < files.length; index += 2) {
+      const results = await Promise.allSettled(
+        files.slice(index, index + 2).map(async (file) => {
+          if (!/^(image|video)\//.test(file.type)) throw new Error('Unsupported media')
+          const sha256 = await sha256Hex(await file.arrayBuffer())
+          const result = await readWallpaperMetadata(file).catch(() => ({
+            metadata: { metadataFailed: true },
+            thumbnail: undefined,
+          }))
+          const item: WallpaperItem = {
+            id: crypto.randomUUID(),
+            mediaType: file.type.startsWith('video/') ? 'video' : 'image',
+            size: file.size,
+            sha256,
+            ...result.metadata,
+          }
+          return { file, item, thumbnail: result.thumbnail }
+        }),
+      )
+      for (const [offset, result] of results.entries()) {
+        if (result.status === 'rejected') {
+          failures.push(files[index + offset]!.name)
+          continue
+        }
+        try {
+          await addWallpaper(group, result.value.item, result.value.file, result.value.thumbnail)
+        } catch {
+          failures.push(files[index + offset]!.name)
+        }
+      }
+      await local.changed()
+    }
+    if (failures.length)
+      ElNotification.warning({
+        title: t('background.library.importFailed', { count: failures.length }),
+        message: failures.join('、'),
+      })
+  } finally {
+    busy.value = false
+    if (filesInput.value) filesInput.value.value = ''
+  }
+}
+function onFiles(event: Event) {
+  void importFiles(Array.from((event.target as HTMLInputElement).files ?? []))
+}
+function dropFiles(event: DragEvent) {
+  if (event.dataTransfer?.files.length) void importFiles(Array.from(event.dataTransfer.files))
+}
+async function clickItem(item: WallpaperItem) {
+  if (managing.value) {
+    selected.value = selected.value.includes(item.id)
+      ? selected.value.filter((id) => id !== item.id)
+      : [...selected.value, item.id]
+    return
+  }
+  await local.select(variant.value, item.id)
+}
+async function removeSelected() {
+  const group = variant.value
+  const ids = [...selected.value]
+  try {
+    await ElMessageBox.confirm(
+      t('background.library.confirmRemove', { count: ids.length }),
+      label('remove'),
+      { type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  await removeWallpapers(group, ids)
+  selected.value = []
+  await local.changed()
+}
+function dragEnd(event: DragEndEvent) {
+  if (event.canceled) return
+  const source = event.operation.source as {
+    data?: { id?: string }
+    initialIndex?: number
+    index?: number
+  } | null
+  if (source?.data?.id && source.initialIndex !== undefined && source.index !== undefined)
+    void move(source.data.id, source.index - source.initialIndex)
+}
+async function move(id: string, offset: number) {
+  const ids = items.value.map((item) => item.id)
+  const index = ids.indexOf(id),
+    target = index + offset
+  if (index < 0 || target < 0 || target >= ids.length) return
+  ids.splice(index, 1)
+  ids.splice(target, 0, id)
+  await reorderWallpapers(variant.value, ids)
+  await local.changed()
+}
+async function clearPreviews() {
+  await clearWallpaperThumbnails()
+  releaseThumbnails()
+  await local.reload()
+}
+function toggleManaging() {
+  managing.value = !managing.value
+  selected.value = []
+}
+function solid() {
+  settings.background.bgType = BgType.None
+}
+async function resolution(value: BingWallpaperResolution) {
+  resolutionBusy.value = true
+  try {
+    if (!(await bingWallpaperURLGetter.setResolution(value)))
+      ElMessage.warning(t('background.warning.bingResolutionCacheFailed'))
+  } catch {
     ElMessage.warning(t('background.warning.bingResolutionCacheFailed'))
   } finally {
-    isBingResolutionLoading.value = false
+    resolutionBusy.value = false
   }
 }
-
-function switchToBing() {
-  bingWallpaperURLGetter.refresh(true)
+function useBing() {
   settings.background.bgType = BgType.Bing
+  void bingWallpaperURLGetter.refresh(true)
 }
-
-function beforeLocalBgSwitch() {
-  if (isDarkBg.value) return true
-  return settings.background.local.id.length > 0
+function open(url: string) {
+  if (url) window.open(url, '_blank', 'noopener')
 }
 </script>
 
@@ -150,243 +288,248 @@ function beforeLocalBgSwitch() {
     v-model="opened"
     :title="t('background.preferenceTitle')"
     container-class="bg-switcher__dialog"
+    :width="660"
+    :style="{
+      height: `min(${settings.background.bgType === BgType.Local ? (visibleItems.length < columns ? 600 : 700) : settings.background.bgType === BgType.Online ? 500 : 480}px, 85vh)`,
+      maxHeight: '85vh',
+    }"
   >
-    <!-- Bing 每日壁纸 -->
-    <div class="bg-switcher-title bg-switcher-title--today">
-      <span>{{ t('background.today') }}</span>
-      <div class="bg-switcher-resolution">
-        <span>{{ t('background.resolution') }}</span>
-        <el-select
-          class="bg-switcher-resolution__select"
-          :model-value="settings.background.bing.resolution"
-          :aria-label="t('background.resolution')"
-          :disabled="isBingResolutionLoading"
-          :loading="isBingResolutionLoading"
-          size="small"
-          @change="handleBingResolutionChange"
-        >
-          <el-option
-            v-for="option in bingResolutionOptions"
-            :key="option.value"
-            :label="option.label"
-            :value="option.value"
-          />
-        </el-select>
-      </div>
-    </div>
-    <div class="bg-switcher-container">
-      <div class="bg-switcher-preview" style="cursor: pointer" @click="switchToBing">
-        <el-image :src="bingWallpaperSrc">
-          <template #error>
-            <div class="bg-switcher-preview__error">
-              <el-icon><hide-image-twotone /></el-icon>
-            </div>
-          </template>
-        </el-image>
-      </div>
-      <div class="bg-switcher-content-wrapper">
-        <div class="bg-switcher-content">
-          <div class="bg-switcher-content-title">{{ bingWallpaperInfo.title }}</div>
-          <el-text line-clamp="2" class="bg-switcher-content-description">
-            {{ bingWallpaperInfo.copyright }}
-          </el-text>
-          <el-space class="bg-switcher-content-actions">
-            <el-button
-              bg
-              text
-              :icon="DownloadRound"
-              @click="open(bingWallpaperURLGetter.uhdUrl.value)"
-            ></el-button>
-            <el-button
-              bg
-              text
-              :icon="LaunchRound"
-              @click="open(bingWallpaperInfo.copyrightlink)"
-            ></el-button>
-            <div class="bg-switcher-bing">{{ t('background.bingFrom') }}</div>
-          </el-space>
-        </div>
-      </div>
-    </div>
-    <!-- 自定义壁纸 -->
-    <div class="bg-switcher-title">{{ t('background.custom') }}</div>
-    <div class="bg-switcher-container bg-switcher-container--custom">
-      <!-- 无壁纸占位 -->
-      <div class="bg-switcher--local-previews" v-if="isNoneBg">
-        <el-icon class="bg-switcher-preview__placeholder"><brightness6-twotone /></el-icon>
-      </div>
-      <!-- 本地壁纸预览/上传 -->
-      <div
-        v-else-if="isLocalBg"
-        class="bg-switcher--local-previews"
-        :style="{ height: `${customLocalContentHeight}px` }"
-      >
-        <!-- 浅色模式本地壁纸上传 -->
-        <el-upload
-          v-show="!isDarkBg"
-          class="bg-switcher-uploader"
-          :show-file-list="false"
-          :http-request="(option: UploadRequestOptions) => handleUpload(option)"
-          :before-upload="beforeBackgroundUpload"
-          accept="image/*,video/*"
-        >
-          <template v-if="settings.background.local.id">
-            <div class="bg-switcher-preview">
-              <video
-                v-if="settings.background.local.mediaType === 'video'"
-                :src="localBgUrl"
-                aria-hidden="true"
-                muted
-                playsinline
-              ></video>
-              <img v-else :src="localBgUrl" alt="" />
-            </div>
-          </template>
-          <el-icon v-else class="bg-switcher-preview__placeholder"><upload-round /></el-icon>
-        </el-upload>
-        <!-- 深色模式本地壁纸上传 -->
-        <el-upload
-          v-if="isDarkBg && settings.background.local.id"
-          class="bg-switcher-uploader"
-          :show-file-list="false"
-          :http-request="(option: UploadRequestOptions) => handleUpload(option)"
-          :before-upload="beforeBackgroundUpload"
-          accept="image/*,video/*"
-        >
-          <template v-if="settings.background.localDark.id">
-            <div class="bg-switcher-preview">
-              <video
-                v-if="settings.background.localDark.mediaType === 'video'"
-                :src="localDarkBgUrl"
-                aria-hidden="true"
-                muted
-                playsinline
-              ></video>
-              <img v-else :src="localDarkBgUrl" alt="" />
-            </div>
-          </template>
-          <el-icon v-else class="bg-switcher-preview__placeholder"><upload-round /></el-icon>
-        </el-upload>
-        <!-- 删除本地壁纸按钮 -->
+    <section class="bg-switcher-section">
+      <h3>{{ t('background.today') }}</h3>
+      <div class="bg-switcher-today">
         <button
-          v-if="isShowDeleteIcon"
-          type="button"
-          class="bg-switcher-uploader-delete"
-          :aria-label="t('newtab:common.delete')"
-          @click="deleteLocalBg"
+          class="bg-switcher-bing-preview"
+          :aria-label="t('background.today')"
+          @click="useBing"
         >
-          <el-icon><close-round /></el-icon>
+          <el-image :src="bingSrc" fit="cover" />
         </button>
-        <!-- 本地浅色壁纸信息 -->
-        <div v-if="metaLight && !isDarkBg" class="bg-switcher-uploader-meta">
-          <div>
-            {{ metaLight.size ? formatBytes(metaLight.size) : '' }}
-            {{ metaLight.width ? `${metaLight.width}×${metaLight.height}` : '' }}
-            {{ metaLight.duration ? `${metaLight.duration.toFixed(1)}s` : '' }}
-          </div>
-        </div>
-        <!-- 本地深色壁纸信息 -->
-        <div v-if="metaDark && isDarkBg" class="bg-switcher-uploader-meta">
-          <div>
-            {{ metaDark.size ? formatBytes(metaDark.size) : '' }}
-            {{ metaDark.width ? `${metaDark.width}×${metaDark.height}` : '' }}
-            {{ metaDark.duration ? `${metaDark.duration.toFixed(1)}s` : '' }}
-          </div>
-        </div>
-        <!-- 切换浅色/深色模式壁纸 -->
-        <div class="bg-switcher-theme-switch">
-          <el-switch
-            v-model="isDarkBg"
-            :active-icon="DarkModeTwotone"
-            :inactive-icon="LightModeTwotone"
-            :before-change="beforeLocalBgSwitch"
-          />
-        </div>
-      </div>
-      <!-- 在线壁纸预览 -->
-      <div class="bg-switcher--local-previews" v-else-if="isOnlineBg">
-        <el-icon class="bg-switcher-preview__placeholder"><cloud-queue-twotone /></el-icon>
-      </div>
-      <!-- 必应壁纸预览 -->
-      <div
-        class="bg-switcher--local-previews"
-        v-else-if="settings.background.bgType === BgType.Bing"
-      >
-        <el-icon class="bg-switcher-preview__placeholder"><bing /></el-icon>
-      </div>
-      <div class="bg-switcher-content-wrapper">
-        <div class="bg-switcher-content" ref="customLocalContentRef">
-          <div class="bg-switcher-content-title">{{ t('background.chooseImageOrVideo') }}</div>
-          <el-text v-if="isNoneBg" line-clamp="2" class="bg-switcher-content-description">
-            {{ t('background.sunMoonSaying') }}
-          </el-text>
-          <el-text v-else-if="isLocalBg" line-clamp="2" class="bg-switcher-content-description">
-            {{ t('background.myZoneMyRule') }}
-          </el-text>
-          <el-text v-else-if="isOnlineBg" line-clamp="2" class="bg-switcher-content-description">
-            {{ t('background.alwaysFresh') }}
-          </el-text>
-          <el-text v-else line-clamp="2" class="bg-switcher-content-description">
-            {{ t('background.youLikeFine') }}
-          </el-text>
-          <el-space wrap class="bg-switcher-content-actions">
+        <div class="bg-switcher-bing-content">
+          <strong>{{ bingInfo.title }}</strong>
+          <p>{{ bingInfo.copyright }}</p>
+          <el-space class="bg-switcher-actions">
             <el-button
-              bg
               text
-              :icon="TripOriginRound"
-              :class="{ active: isNoneBg }"
-              @click="handleNoneBg"
-            >
-              {{ isDark ? t('background.button.bathe.moon') : t('background.button.bathe.sun') }}
-            </el-button>
+              bg
+              :icon="DownloadRound"
+              :aria-label="label('download')"
+              @click="open(bingWallpaperURLGetter.uhdUrl.value)"
+            />
             <el-button
-              bg
               text
-              :icon="FolderCopyRound"
-              :class="{ active: isLocalBg }"
-              @click="settings.background.bgType = BgType.Local"
-            >
-              {{ t('background.type.local') }}
-            </el-button>
-            <el-button
               bg
-              text
-              :icon="InsertLinkRound"
-              :class="{ active: isOnlineBg }"
-              @click="onlineImageWarn"
-            >
-              {{ t('background.type.online') }}
-            </el-button>
+              :icon="LaunchRound"
+              :aria-label="t('background.bingFrom')"
+              @click="open(bingInfo.copyrightlink)"
+            />
+            <label class="bg-switcher-resolution">
+              {{ t('background.resolution') }}
+              <el-select
+                :model-value="settings.background.bing.resolution"
+                :aria-label="t('background.resolution')"
+                size="small"
+                :loading="resolutionBusy"
+                :disabled="resolutionBusy"
+                @change="resolution"
+              >
+                <el-option label="1080P" value="1080p" /><el-option label="4K (UHD)" value="uhd" />
+              </el-select>
+            </label>
+            <span class="bg-switcher-meta">{{ t('background.bingFrom') }}</span>
           </el-space>
         </div>
       </div>
-      <div class="bg-switcher-extra">
+    </section>
+    <section class="bg-switcher-section">
+      <h3>{{ t('background.custom') }}</h3>
+      <el-space class="bg-switcher-sources">
+        <el-button
+          text
+          bg
+          :class="{ active: settings.background.bgType === BgType.None }"
+          @click="solid"
+        >
+          {{ label('solid') }}
+        </el-button>
+        <el-button
+          text
+          bg
+          :class="{ active: settings.background.bgType === BgType.Local }"
+          @click="settings.background.bgType = BgType.Local"
+        >
+          {{ t('background.type.local') }}
+        </el-button>
+        <el-button
+          text
+          bg
+          :class="{ active: settings.background.bgType === BgType.Online }"
+          @click="onlineImageWarn"
+        >
+          {{ t('background.type.online') }}
+        </el-button>
+      </el-space>
+      <div v-if="settings.background.bgType === BgType.None" class="bg-switcher-colors">
+        <el-space direction="vertical">
+          <div v-for="group in groups" :key="group" class="bg-switcher-color-control">
+            <span>{{ label(group) }}:</span>
+            <el-color-picker
+              :model-value="
+                settings.background.solid[group] || (group === 'light' ? '#f2f3f5' : '#0a0a0a')
+              "
+              color-format="hex"
+              :aria-label="label(group)"
+              @change="(value) => (settings.background.solid[group] = value || '')"
+            />
+            <el-button
+              text
+              size="small"
+              @click="settings.background.solid[group] = ''"
+              style="font-size: 0.85em"
+            >
+              {{ label('reset') }}
+            </el-button>
+          </div>
+        </el-space>
+      </div>
+      <div
+        v-else-if="settings.background.bgType === BgType.Local"
+        class="bg-switcher-local"
+        @dragover.prevent
+        @drop.prevent="dropFiles"
+      >
+        <input
+          ref="filesInput"
+          class="bg-switcher-file"
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          @change="onFiles"
+        />
+        <div class="bg-switcher-toolbar">
+          <el-radio-group v-model="variant" :aria-label="label('group')">
+            <el-radio-button v-for="group in groups" :key="group" :value="group">
+              {{ label(group) }} · {{ local.library[group].items.length }}
+            </el-radio-button>
+          </el-radio-group>
+          <el-button v-if="items.length" text @click="toggleManaging">
+            {{ label(managing ? 'done' : 'manage') }}
+          </el-button>
+        </div>
+        <DragDropProvider @dragend="dragEnd">
+          <div ref="grid" class="bg-switcher-grid" :style="{ '--wallpaper-columns': columns }">
+            <WallpaperSortableItem
+              v-for="(item, index) in visibleItems"
+              :id="item.id"
+              :key="`${variant}:${item.id}`"
+              :index="index"
+              :disabled="!managing"
+              :label="label('sortHint')"
+            >
+              <button
+                class="bg-switcher-tile"
+                :class="{
+                  selected: managing
+                    ? selected.includes(item.id)
+                    : local.displayed?.item.id === item.id && local.displayed?.variant === variant,
+                }"
+                :aria-label="`${label(item.mediaType)} · ${metadata(item)}`"
+                :aria-pressed="
+                  managing
+                    ? selected.includes(item.id)
+                    : local.displayed?.item.id === item.id && local.displayed?.variant === variant
+                "
+                @click="clickItem(item)"
+              >
+                <img
+                  v-if="thumbnails[`${variant}:${item.id}`]"
+                  :src="thumbnails[`${variant}:${item.id}`]"
+                  alt=""
+                  loading="lazy"
+                  draggable="false"
+                />
+                <span v-else class="bg-switcher-placeholder">{{ label(item.mediaType) }}</span>
+                <span v-if="item.mediaType === 'video'" class="bg-switcher-video">▶</span>
+                <span
+                  v-if="
+                    managing
+                      ? selected.includes(item.id)
+                      : local.displayed?.item.id === item.id && local.displayed?.variant === variant
+                  "
+                  class="bg-switcher-check"
+                >
+                  ✓
+                </span>
+              </button>
+              <div class="bg-switcher-meta">{{ metadata(item) }}</div>
+            </WallpaperSortableItem>
+            <button class="bg-switcher-add" :disabled="busy" @click="filesInput?.click()">
+              <span>＋</span>{{ label('add') }}
+            </button>
+          </div>
+        </DragDropProvider>
+        <p v-if="!items.length" class="bg-switcher-hint">
+          {{ label(variant === 'dark' ? 'inherit' : 'empty') }}
+        </p>
+        <div class="bg-switcher-toolbar">
+          <span class="bg-switcher-meta" style="margin-top: 0">
+            {{ label(managing ? 'sortHint' : 'dragAddHint') }}
+          </span>
+          <el-space>
+            <el-button
+              v-if="items.length > columns * 2 - 1 && !managing"
+              text
+              @click="expanded = !expanded"
+            >
+              {{ label(expanded ? 'collapse' : 'expand') }}
+            </el-button>
+            <template v-if="managing">
+              <el-button text @click="clearPreviews">{{ label('clearPreviews') }}</el-button>
+              <el-button type="danger" text :disabled="!selected.length" @click="removeSelected">
+                {{ label('remove') }} ({{ selected.length }})
+              </el-button>
+            </template>
+          </el-space>
+        </div>
+        <div
+          v-if="Math.max(local.library.light.items.length, local.library.dark.items.length) > 1"
+          class="bg-switcher-rotation"
+        >
+          <div class="bg-switcher-rotation-control">
+            {{ label('rotation') }}
+            <el-switch
+              v-model="settings.background.rotation.enabled"
+              :aria-label="label('rotation')"
+              @change="settings.save"
+            />
+          </div>
+          <el-radio-group
+            v-if="settings.background.rotation.enabled"
+            v-model="settings.background.rotation.order"
+            @change="settings.save"
+            :aria-label="label('order')"
+          >
+            <el-radio value="random">{{ label('random') }}</el-radio>
+            <el-radio value="ordered">{{ label('ordered') }}</el-radio>
+          </el-radio-group>
+        </div>
+      </div>
+      <div v-else-if="settings.background.bgType === BgType.Online" class="bg-switcher-online">
         <el-input
-          v-if="isOnlineBg"
           v-model="tempOnlineUrl"
+          placeholder="https://example.com/image.jpg"
           @blur="changeOnlineBg"
           @keydown.enter="changeOnlineBg"
-          placeholder="https://example.com/image.jpg"
         >
           <template #prepend>URL</template>
         </el-input>
-        <ul class="bg-switcher-warning">
-          <li v-if="isLocalBg">
-            {{ t('background.tip') }}
+        <ul class="bg-switcher-hint">
+          <li>{{ t('background.onlineTips.a') }}</li>
+          <li v-if="!settings.background.online.cache.enabled">
+            {{ t('background.onlineTips.b') }}
           </li>
-          <li v-if="isVideoBg">
-            {{ t('background.video.warning') }}
-          </li>
-          <template v-if="isOnlineBg">
-            <li>{{ t('background.onlineTips.a') }}</li>
-            <li v-if="!settings.background.online.cache.enabled">
-              {{ t('background.onlineTips.b') }}
-            </li>
-            <li>{{ t('background.onlineTips.c') }}</li>
-            <li>{{ t('background.onlineTips.d') }}</li>
-          </template>
+          <li>{{ t('background.onlineTips.c') }}</li>
         </ul>
       </div>
-    </div>
+    </section>
   </base-dialog>
 </template>

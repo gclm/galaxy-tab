@@ -89,16 +89,8 @@ export const defaultSettings = {
     pauseOnBlur: false,
     fastAnimation: false,
 
-    local: {
-      id: '',
-      url: '',
-      mediaType: undefined,
-    },
-    localDark: {
-      id: '',
-      url: '',
-      mediaType: undefined,
-    },
+    solid: { light: '', dark: '' },
+    rotation: { enabled: false, order: 'random' },
     bing: {
       id: '',
       url: '',

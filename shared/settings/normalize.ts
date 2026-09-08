@@ -136,6 +136,16 @@ export function normalizeCurrentSettings(settings: CURRENT_CONFIG_SCHEMA): CURRE
   const normalized = settings as MutableCurrentSettings
   normalized.theme ??= structuredClone(defaultSettings.theme)
   normalized.background ??= structuredClone(defaultSettings.background)
+  normalized.background.solid ??= { light: '', dark: '' }
+  for (const variant of ['light', 'dark'] as const) {
+    const color = normalized.background.solid[variant]
+    normalized.background.solid[variant] =
+      typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color) ? color : ''
+  }
+  normalized.background.rotation ??= { enabled: false, order: 'random' }
+  normalized.background.rotation.enabled = normalized.background.rotation.enabled === true
+  normalized.background.rotation.order =
+    normalized.background.rotation.order === 'ordered' ? 'ordered' : 'random'
   normalized.background.bing ??= structuredClone(defaultSettings.background.bing)
   normalized.clock ??= structuredClone(defaultSettings.clock)
   normalized.clock.style ??= structuredClone(defaultSettings.clock.style)

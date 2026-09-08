@@ -45,15 +45,22 @@ export interface SyncBlockedTopSitesV1 {
 }
 
 export interface SyncWallpaperV1 {
+  id: string
   assetId: string
   size: number
   mimeType: string
   sha256: string
 }
 
+export interface SyncWallpaperGroupV1 {
+  items: SyncWallpaperV1[]
+  order: string[]
+  fixedId: string
+}
 export interface SyncWallpapersV1 {
-  light?: SyncWallpaperV1
-  dark?: SyncWallpaperV1
+  light?: SyncWallpaperGroupV1
+  dark?: SyncWallpaperGroupV1
+  rotation?: { enabled: boolean; order: 'random' | 'ordered' }
 }
 
 export interface SyncSnapshotV1 {

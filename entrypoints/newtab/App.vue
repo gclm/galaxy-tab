@@ -312,14 +312,19 @@ function toggleMinimalMode() {
         @open-bookmark-sidebar="showBookmark"
       />
       <refresh-bg-btn
-        v-if="settings.background.bgType === BgType.Online"
+        v-if="
+          settings.background.bgType === BgType.Online ||
+          settings.background.bgType === BgType.Local
+        "
         v-show="!minimalMode"
         @refresh-background="BackgroundRef?.refreshBackground"
       ></refresh-bg-btn>
       <download-bg-btn
         v-if="
           settings.background.showDownloadBtn &&
-          ([BgType.Bing, BgType.Online] as BgType[]).includes(settings.background.bgType)
+          ([BgType.Bing, BgType.Online, BgType.Local] as BgType[]).includes(
+            settings.background.bgType,
+          )
         "
         v-show="!minimalMode"
       ></download-bg-btn>

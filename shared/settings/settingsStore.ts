@@ -14,8 +14,6 @@ export const useSettingsStore = defineStore('option', () => {
     console.log('[Settings] Initializing settings storage with config version', settings.version)
 
     // 清除过期的 blob url，避免使用失效的 URL
-    if (settings.background.local.url) settings.background.local.url = ''
-    if (settings.background.localDark.url) settings.background.localDark.url = ''
     if (settings.background.bing.url) settings.background.bing.url = ''
 
     Object.assign(state, normalizeCurrentSettings(settings))

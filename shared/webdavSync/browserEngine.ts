@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser'
 
 import { CURRENT_CONFIG_VERSION } from '@/shared/settings'
+import { readWallpaperLibrary, wallpaperLibrarySignature } from '@/shared/wallpaperLibrary'
 
 import {
   expectedAppliedSnapshot,
@@ -10,7 +11,6 @@ import {
 import {
   captureBrowserSyncSnapshot,
   captureBrowserSyncSnapshotResult,
-  getUnavailableSelectedWallpaperVariants,
   getLocalWallpaperBlob,
   prepareAndApplyBrowserSnapshot,
   resumePendingBrowserApply,
@@ -251,6 +251,7 @@ export async function finalizeSnapshot(input: {
   wallpapers?: IncomingWallpaperResources
   preserveLocalWallpapers?: boolean
 }): Promise<void> {
+  const wallpaperSignature = wallpaperLibrarySignature(await readWallpaperLibrary())
   const capture = await captureBrowserSyncSnapshotResult(
     input.expectedLocal.scope,
     input.expectedLocal,
@@ -277,7 +278,6 @@ export async function finalizeSnapshot(input: {
           ? capture.snapshot
           : await captureBrowserSyncSnapshot(input.snapshot.scope),
         input.snapshot,
-        Object.keys(input.wallpapers ?? {}) as Array<'dark' | 'light'>,
       ),
       input.snapshot,
       verificationScope,
@@ -297,8 +297,10 @@ export async function finalizeSnapshot(input: {
       input.snapshot,
       input.snapshot.scope,
       input.wallpapers,
+      wallpaperSignature,
     )
-    const captured = await captureBrowserSyncSnapshot(input.snapshot.scope)
+    const captured = (await captureBrowserSyncSnapshotResult(input.snapshot.scope, input.snapshot))
+      .snapshot
     const applied = preserveExcludedScope(captured, input.snapshot, verificationScope)
     if (!jsonEquals(applied, expected)) {
       throw new WebDavError('precondition', 'Applied local snapshot did not pass verification')
@@ -537,55 +539,59 @@ export async function resolveRevisionAssets(
   snapshot: SyncSnapshotV1,
   knownAssets: readonly AssetReferenceV1[],
   encryptionKey?: CryptoKey,
-  providedWallpapers: Partial<Record<'dark' | 'light', Blob>> = {},
 ): Promise<AssetReferenceV1[]> {
   const result: AssetReferenceV1[] = []
   for (const variant of ['light', 'dark'] as const) {
-    const reference = snapshot.optional?.wallpapers?.[variant]
-    if (!reference) continue
-    const role = wallpaperRole(variant)
-    const resolved = result.find(
-      (asset) => asset.id === reference.assetId && asset.sha256 === reference.sha256,
-    )
-    if (resolved) continue
-    const known = knownAssets.find(
-      (asset) => asset.id === reference.assetId && asset.sha256 === reference.sha256,
-    )
-    if (known) {
-      result.push(known)
-      continue
-    }
-    const blob =
-      providedWallpapers[variant] ?? (await getLocalWallpaperBlob(variant, reference.sha256))
-    if (!blob) throw new WebDavError('corrupted', 'Selected local wallpaper is unavailable')
-    let uploaded: AssetReferenceV1
-    if (metadata.encrypted) {
-      if (!encryptionKey) {
-        throw new WebDavError('encryption-locked', 'Encrypted WebDAV vault is locked')
-      }
-      const storageId = crypto.randomUUID()
-      const encrypted = await encryptSyncBytes(
-        encryptionKey,
-        await blob.arrayBuffer(),
-        createEncryptionAad({
-          vaultId: metadata.vaultId,
-          generationId: metadata.generationId,
-          objectType: 'asset',
-          objectId: storageId,
-        }),
+    for (const reference of snapshot.optional?.wallpapers?.[variant]?.items ?? []) {
+      const role = wallpaperRole(variant)
+      const resolved = result.find(
+        (asset) => asset.id === reference.assetId && asset.sha256 === reference.sha256,
       )
-      uploaded = await repository.publishEncryptedAsset(metadata, role, blob, storageId, encrypted)
-    } else {
-      uploaded = await repository.publishAsset(metadata, role, blob)
+      if (resolved) continue
+      const known = knownAssets.find(
+        (asset) => asset.id === reference.assetId && asset.sha256 === reference.sha256,
+      )
+      if (known) {
+        result.push(known)
+        continue
+      }
+      const blob = await getLocalWallpaperBlob(variant, reference.sha256)
+      if (!blob) throw new WebDavError('corrupted', 'Selected local wallpaper is unavailable')
+      let uploaded: AssetReferenceV1
+      if (metadata.encrypted) {
+        if (!encryptionKey) {
+          throw new WebDavError('encryption-locked', 'Encrypted WebDAV vault is locked')
+        }
+        const storageId = crypto.randomUUID()
+        const encrypted = await encryptSyncBytes(
+          encryptionKey,
+          await blob.arrayBuffer(),
+          createEncryptionAad({
+            vaultId: metadata.vaultId,
+            generationId: metadata.generationId,
+            objectType: 'asset',
+            objectId: storageId,
+          }),
+        )
+        uploaded = await repository.publishEncryptedAsset(
+          metadata,
+          role,
+          blob,
+          storageId,
+          encrypted,
+        )
+      } else {
+        uploaded = await repository.publishAsset(metadata, role, blob)
+      }
+      if (
+        uploaded.id !== reference.assetId ||
+        uploaded.size !== reference.size ||
+        uploaded.mimeType !== reference.mimeType
+      ) {
+        throw new WebDavError('corrupted', 'Uploaded wallpaper does not match its snapshot')
+      }
+      result.push(uploaded)
     }
-    if (
-      uploaded.id !== reference.assetId ||
-      uploaded.size !== reference.size ||
-      uploaded.mimeType !== reference.mimeType
-    ) {
-      throw new WebDavError('corrupted', 'Uploaded wallpaper does not match its snapshot')
-    }
-    result.push(uploaded)
   }
   return result
 }
@@ -599,20 +605,25 @@ export async function prepareIncomingWallpapers(
   encryptionKey?: CryptoKey,
 ): Promise<IncomingWallpaperResources | undefined> {
   if (!state.scope.wallpapers) return undefined
-  const unavailable = await getUnavailableSelectedWallpaperVariants()
   const result: IncomingWallpaperResources = {}
   for (const variant of ['light', 'dark'] as const) {
-    if (unavailable.has(variant)) continue
-    const reference = snapshot.optional?.wallpapers?.[variant]
-    if (!reference || (await getLocalWallpaperBlob(variant, reference.sha256))) continue
-    const asset = assets.find((item) => item.id === reference.assetId)
-    if (!asset) throw new WebDavError('corrupted', 'Revision wallpaper reference is missing')
-    result[variant] = {
-      assetId: reference.assetId,
-      blob: await readWallpaperAsset(repository, metadata, asset, encryptionKey),
-      sha256: reference.sha256,
+    for (const reference of snapshot.optional?.wallpapers?.[variant]?.items ?? []) {
+      let blob = await getLocalWallpaperBlob(variant, reference.sha256)
+      if (!blob) {
+        const asset = assets.find((item) => item.id === reference.assetId)
+        if (!asset) throw new WebDavError('corrupted', 'Revision wallpaper reference is missing')
+        blob = await readWallpaperAsset(repository, metadata, asset, encryptionKey)
+      }
+      result[`${variant}:${reference.id}`] = {
+        variant,
+        itemId: reference.id,
+        assetId: reference.assetId,
+        blob,
+        sha256: reference.sha256,
+      }
     }
   }
+
   return Object.keys(result).length ? result : undefined
 }
 

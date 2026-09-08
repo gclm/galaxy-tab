@@ -12,6 +12,7 @@ import { clearFaviconCache } from '@/shared/media'
 import { defaultSettings, useSettingsStore } from '@/shared/settings'
 import { clearExtensionData, reloadNewtabTabs } from '@/shared/settings/legacySettingsRecovery'
 import { idbClearMany } from '@/shared/storage/idb'
+import { clearWallpaperLibrary } from '@/shared/wallpaperLibrary'
 import {
   disconnectSyncConnection,
   getSyncState,
@@ -29,7 +30,6 @@ import {
   PermissionResult,
   usePermission,
 } from '@newtab/composables/usePermission'
-import { wallpaperUrlCache } from '@newtab/shared/wallpaper'
 
 import SyncAvailabilityIcon from '../components/SyncAvailabilityIcon.vue'
 
@@ -207,8 +207,7 @@ async function runClearAndReload(text: string, task: () => Promise<void>) {
 async function clearWallpaperData() {
   const resetSettings = () => {
     settings.background.bgType = defaultSettings.background.bgType
-    settings.background.local = { ...defaultSettings.background.local }
-    settings.background.localDark = { ...defaultSettings.background.localDark }
+    settings.background.rotation = { ...defaultSettings.background.rotation }
     settings.background.bing = { ...defaultSettings.background.bing }
     settings.background.online = {
       ...defaultSettings.background.online,
@@ -217,8 +216,8 @@ async function clearWallpaperData() {
   }
 
   await runClearAndReload(t('other.purge.confirm.wallpaper.purging'), async () => {
-    await idbClearMany(['wallpaper', 'wallpaperDark', 'wallpaperBing', 'onlineWallpaperCache'])
-    await wallpaperUrlCache.setValue({ light: '', dark: '', bing: '' })
+    await clearWallpaperLibrary()
+    await idbClearMany(['wallpaperBing', 'onlineWallpaperCache'])
     resetSettings()
     await settings.save()
   })
@@ -453,7 +452,9 @@ function changeLanguage(lang: string) {
       <div
         class="settings__item settings__item--horizontal settings-control-wide settings-control-stackable"
       >
-        <div class="settings__label">{{ t('other.importExport.backup') }}</div>
+        <div class="settings__label">
+          {{ t('other.importExport.backup') }}
+        </div>
         <span class="button-group">
           <el-button type="primary" :icon="DownloadRound" @click="exportBackup">
             {{ t('other.importExport.export') }}

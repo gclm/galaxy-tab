@@ -7,7 +7,9 @@
 ### New Features✨
 
 - **Page display:** Added controls for date size, double-clicking the blank background to toggle minimal mode, and keeping the clock and date visible while page elements fade when inactive.
-- **Wallpaper:** Added an option to show or hide the download button for online/Bing wallpapers.
+- **Wallpaper:** Add multiple local images or videos and rotate them randomly or in order on new tabs.
+- **Wallpaper:** Redesigned the picker with resolution details, batch removal, sorting, improved narrow-screen layouts, and faster local wallpaper loading.
+- **Wallpaper:** Added an option to show or hide the wallpaper download button, including downloads of the current local image or video.
 - **Search:** Added an option to disable search suggestions.
 - **Search:** Added an option to left-align search input text.
 - **Bookmarks:** When adding a bookmark to Quick Links, the current Quick Links group is selected by default.

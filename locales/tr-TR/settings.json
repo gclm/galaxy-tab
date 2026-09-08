@@ -3,15 +3,8 @@
     "back": "Önceki ayarlar görünümüne dön"
   },
   "background": {
-    "alwaysFresh": "Her zaman yeni bir şey",
     "bingFrom": "Görsel kaynağı: Bing",
     "blur": "Bulanıklık yoğunluğu",
-    "button": {
-      "bathe": {
-        "moon": "Mehtapta yıkan",
-        "sun": "Güneşte yıkan"
-      }
-    },
     "cache": {
       "askEnable": {
         "message": "Önbellek, tekrarlanan indirmeleri azaltır ve önbelleğe alınmış duvar kağıtlarını çevrimdışı kullanıma hazır tutar. Duvar kağıdı önbelleği etkinleştirilsin mi?",
@@ -24,14 +17,12 @@
       "noExpires": "Önbellek asla sona ermez"
     },
     "change": "Arka planı değiştir",
-    "chooseImageOrVideo": "Duvar kağıdı olarak kullanılacak bir resim veya video seçin",
     "custom": "Özel",
     "fasterBgAnim": "Başlangıçta daha hızlı arka plan gösterimi",
     "mask": {
       "color": "Maske rengi",
       "enable": "Maskeyi etkinleştir"
     },
-    "myZoneMyRule": "Senin alanın. Senin kuralların.",
     "onlineTips": {
       "a": "Enter tuşuna basarak veya giriş alanı odağı kaybettiğinde gönderin.",
       "b": "Duvar kağıdı önbellekleme stratejisi tarayıcıya bağlıdır ve duvar kağıtları çevrimdışı erişilebilir olmayabilir.",
@@ -63,9 +54,7 @@
     "preferenceTitle": "Duvar kağıdı tercihleri",
     "resolution": "Çözünürlük",
     "showDownloadBtn": "İndirme düğmesini göster",
-    "showDownloadBtnNote": "Yalnızca Bing ve çevrimiçi duvar kağıtları için kullanılabilir.",
-    "sunMoonSaying": "Güneş varken güneşte yıkan. Ama ay varken mehtapta yıkan!",
-    "tip": "Karanlık mod için arka plan ayarlanmamışsa, aydınlık mod arka planı veya videosu kullanılır.",
+    "showDownloadBtnNote": "Görüntülenen Bing, çevrimiçi veya yerel duvar kağıdını indirin",
     "title": "Arka Plan",
     "today": "Bugün",
     "type": {
@@ -91,7 +80,36 @@
       },
       "unknownSource": "Bilinmeyen kaynaklardan alınan görselleri arka plan olarak kullanmak cihazınızı saldırılara maruz bırakabilir. Devam etmek istiyor musunuz?"
     },
-    "youLikeFine": "Beğendiyseniz, sorun yok~"
+    "youLikeFine": "Beğendiyseniz, sorun yok~",
+    "library": {
+      "solid": "Düz renk",
+      "light": "Açık tema",
+      "dark": "Koyu tema",
+      "reset": "Sıfırla",
+      "group": "Duvar kâğıdı grubu",
+      "download": "İndir",
+      "add": "Ekle",
+      "manage": "Yönet",
+      "done": "Bitti",
+      "remove": "Kaldır",
+      "expand": "Tümünü göster",
+      "collapse": "Daralt",
+      "inherit": "Koyu tema duvar kâğıdı ayarlanmadığında açık tema duvar kâğıtları otomatik olarak kullanılır.",
+      "empty": "Resim veya video ekleyin. Birden fazla dosya seçin ya da buraya sürükleyin.",
+      "rotation": "Duvar kâğıdı değişimi",
+      "order": "Değiştirme sırası",
+      "random": "Rastgele",
+      "ordered": "Liste sırası",
+      "image": "Resim",
+      "video": "Video",
+      "loading": "Bilgiler okunuyor",
+      "unavailable": "Kullanılamıyor",
+      "dragAddHint": "Eklemek için resimleri veya videoları buraya sürükleyin",
+      "sortHint": "Sıralamak için sürükleyin",
+      "importFailed": "{{count}} dosya eklenemedi. Diğer dosyalar korundu.",
+      "confirmRemove": "Seçilen {{count}} duvar kâğıdı kaldırılsın mı?",
+      "clearPreviews": "Önizleme önbelleğini temizle"
+    }
   },
   "bookmark": {
     "defaultSort": "Varsayılan sıralama",
@@ -514,7 +532,8 @@
       "wallpaperFailed": "Duvar kâğıdı yükleme veya bütünlük denetimini geçemedi. Diğer veriler eşitlenmeye devam eder.",
       "wallpaperScopeDisabled": "Yerel resim duvar kâğıtları yalnızca bu cihazda tutulur. WebDAV eşitleme kapsamına ekleyebilirsiniz.",
       "wallpaperTooLarge": "Resim 20 MB sınırını aştığından duvar kâğıdı eşitlenmedi. Diğer veriler eşitlenmeye devam eder.",
-      "wallpaperVideo": "Video duvar kâğıtları WebDAV üzerinden eşitlenmez."
+      "wallpaperVideo": "Video duvar kâğıtları WebDAV üzerinden eşitlenmez.",
+      "wallpaperPartial": "Yalnızca 20 MiB sınırındaki kullanılabilir sabit görseller eşitlenir. Videolar, animasyonlar ve atlanan dosyalar bu cihazda kalır."
     }
   },
   "webdavSync": {
@@ -550,7 +569,9 @@
         "searchEngineUrl": "Arama motoru adresi",
         "wallpaper": "Duvar kâğıdı",
         "wallpaperDark": "Koyu duvar kâğıdı",
-        "wallpaperLight": "Açık duvar kâğıdı"
+        "wallpaperLight": "Açık duvar kâğıdı",
+        "wallpaperOrder": "Duvar kağıdı liste sırası",
+        "wallpaperFixed": "Sabit duvar kağıdı"
       },
       "finish": "Birleştirme sürümü oluştur",
       "local": "Yerel verileri koru",

@@ -6,7 +6,6 @@ import { browser } from 'wxt/browser'
 
 import { BgType } from '@/shared/enums'
 import { useSettingsStore } from '@/shared/settings'
-import { idbGet } from '@/shared/storage/idb'
 
 import {
   PermissionContext,
@@ -15,6 +14,7 @@ import {
 } from '@newtab/composables/usePermission'
 import { OPEN_BACKGROUND_PREFERENCE } from '@newtab/shared/keys'
 import { isOnlyTouchDevice } from '@newtab/shared/touch'
+import { useLocalWallpaperStore } from '@newtab/shared/wallpaper'
 
 import SyncAvailabilityIcon from '../components/SyncAvailabilityIcon.vue'
 
@@ -29,26 +29,25 @@ const predefineMaskColor = ['#f2f3f5', '#000']
 const openBackgroundPreference = inject(OPEN_BACKGROUND_PREFERENCE)
 
 const { checkAndRequestPermission } = usePermission()
-const localWallpaperSize = ref<number>()
+const library = useLocalWallpaperStore()
 const onlinePermissionPending = ref(false)
 
 const localWallpaper = computed(() => {
-  const source = settings.background.local.id
-    ? settings.background.local
-    : settings.background.localDark
+  const items = [...library.library.light.items, ...library.library.dark.items]
   return {
-    selected: Boolean(source.id),
-    mediaType: source.mediaType,
-    size: localWallpaperSize.value,
+    selected: items.length > 0,
+    partial: items.some(
+      (item) =>
+        item.mediaType === 'video' ||
+        item.metadataFailed ||
+        item.syncEligible === false ||
+        (item.size ?? 0) > 20 * 1024 * 1024,
+    ),
   }
 })
 
 async function refreshBackgroundAvailability() {
-  const source = settings.background.local.id
-    ? { store: 'wallpaper' as const, value: settings.background.local }
-    : { store: 'wallpaperDark' as const, value: settings.background.localDark }
-  const blob = source.value.id ? await idbGet(source.store, source.value.id) : undefined
-  localWallpaperSize.value = blob instanceof Blob ? blob.size : undefined
+  await library.init()
   if (settings.background.bgType !== BgType.Online || !settings.background.online.url) {
     onlinePermissionPending.value = false
     return
@@ -63,12 +62,7 @@ async function refreshBackgroundAvailability() {
 
 onMounted(refreshBackgroundAvailability)
 watch(
-  () => [
-    settings.background.bgType,
-    settings.background.local.id,
-    settings.background.localDark.id,
-    settings.background.online.url,
-  ],
+  () => [settings.background.bgType, library.library, settings.background.online.url],
   refreshBackgroundAvailability,
 )
 

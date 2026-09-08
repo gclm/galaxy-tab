@@ -3,15 +3,8 @@
     "back": "返回上一层设置"
   },
   "background": {
-    "alwaysFresh": "永远都有新鲜感",
     "bingFrom": "图片来源：必应",
     "blur": "模糊强度",
-    "button": {
-      "bathe": {
-        "moon": "晒月亮",
-        "sun": "晒太阳"
-      }
-    },
     "cache": {
       "askEnable": {
         "message": "开启后会缓存在线壁纸，减少重复加载，并可在断网时继续显示已缓存的壁纸。是否开启？",
@@ -24,14 +17,12 @@
       "noExpires": "缓存永不过期"
     },
     "change": "更改背景",
-    "chooseImageOrVideo": "选择你喜欢的图片或视频作为壁纸",
     "custom": "自定义",
     "fasterBgAnim": "启动时更快地显示背景",
     "mask": {
       "color": "遮罩颜色",
       "enable": "启用遮罩"
     },
-    "myZoneMyRule": "我的地盘我做主",
     "onlineTips": {
       "a": "按下回车键或者输入框失去焦点后提交",
       "b": "壁纸缓存策略取决于浏览器，断网后会获取不到壁纸",
@@ -63,9 +54,7 @@
     "preferenceTitle": "壁纸偏好",
     "resolution": "清晰度",
     "showDownloadBtn": "显示下载按钮",
-    "showDownloadBtnNote": "仅在使用必应壁纸或在线壁纸时提供下载功能",
-    "sunMoonSaying": "太阳出来我晒太阳，月亮出来我晒月亮",
-    "tip": "深色模式背景没有选择的话会继续使用浅色模式的图片/视频噢",
+    "showDownloadBtnNote": "可下载当前显示的必应、在线或本地壁纸",
     "title": "背景",
     "today": "今日",
     "type": {
@@ -91,7 +80,36 @@
       },
       "unknownSource": "使用未知来源的图片作为背景可能会使你的设备遭到攻击，是否继续？"
     },
-    "youLikeFine": "你喜欢就好~"
+    "youLikeFine": "你喜欢就好~",
+    "library": {
+      "solid": "纯色背景",
+      "light": "浅色模式",
+      "dark": "深色模式",
+      "reset": "恢复默认",
+      "group": "壁纸分组",
+      "download": "下载",
+      "add": "添加",
+      "manage": "管理",
+      "done": "完成",
+      "remove": "移除",
+      "expand": "展开全部",
+      "collapse": "收起",
+      "inherit": "未设置深色模式壁纸时，将自动使用浅色模式壁纸。",
+      "empty": "添加图片或视频，支持一次选择多个文件或拖入。",
+      "rotation": "壁纸轮换",
+      "order": "轮换顺序",
+      "random": "随机",
+      "ordered": "按列表顺序",
+      "image": "图片",
+      "video": "视频",
+      "loading": "信息读取中",
+      "unavailable": "无法读取",
+      "dragAddHint": "拖入图片或视频添加",
+      "sortHint": "拖动排序",
+      "importFailed": "有 {{count}} 个文件未能添加，其余文件已保留。",
+      "confirmRemove": "移除选中的 {{count}} 个壁纸？",
+      "clearPreviews": "清理预览缓存"
+    }
   },
   "bookmark": {
     "defaultSort": "默认排序方式",
@@ -437,7 +455,8 @@
       "wallpaperFailed": "壁纸文件未通过上传或完整性校验，其他数据仍会同步。",
       "wallpaperScopeDisabled": "本地图片壁纸仅保存在此设备。可在 WebDAV 同步范围中开启。",
       "wallpaperTooLarge": "图片超过 20 MB，壁纸未同步；其他数据仍会同步。",
-      "wallpaperVideo": "视频壁纸不会通过 WebDAV 同步。"
+      "wallpaperVideo": "视频壁纸不会通过 WebDAV 同步。",
+      "wallpaperPartial": "仅同步 20 MiB 以内的可用静态图片；视频、动态图及其他跳过项保留在本机。"
     }
   },
   "theme": {
@@ -522,7 +541,9 @@
         "searchEngineUrl": "搜索引擎地址",
         "wallpaper": "壁纸",
         "wallpaperDark": "深色壁纸",
-        "wallpaperLight": "浅色壁纸"
+        "wallpaperLight": "浅色壁纸",
+        "wallpaperOrder": "壁纸排列顺序",
+        "wallpaperFixed": "固定壁纸"
       },
       "finish": "创建合并版本",
       "local": "保留本地数据",

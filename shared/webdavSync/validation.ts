@@ -182,6 +182,8 @@ function isBlockedTopSites(value: unknown): boolean {
 function isWallpaper(value: unknown): boolean {
   return (
     isRecord(value) &&
+    isEntityId(value.id) &&
+    /^[a-zA-Z0-9_-]+$/.test(value.id) &&
     typeof value.assetId === 'string' &&
     /^sha256-[0-9a-f]{64}$/i.test(value.assetId) &&
     typeof value.size === 'number' &&
@@ -190,15 +192,38 @@ function isWallpaper(value: unknown): boolean {
     value.size <= MAX_SYNC_WALLPAPER_BYTES &&
     typeof value.mimeType === 'string' &&
     value.mimeType.startsWith('image/') &&
-    isHash(value.sha256)
+    isHash(value.sha256) &&
+    value.assetId === `sha256-${value.sha256}`
   )
 }
 
+function isWallpaperGroup(value: unknown): boolean {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    !value.items.every(isWallpaper) ||
+    !Array.isArray(value.order)
+  )
+    return false
+  const ids = value.items.map((item) => (item as { id: string }).id)
+  return (
+    new Set(ids).size === ids.length &&
+    value.order.length === ids.length &&
+    new Set(value.order).size === ids.length &&
+    value.order.every((id) => typeof id === 'string' && ids.includes(id)) &&
+    typeof value.fixedId === 'string' &&
+    (!value.fixedId || ids.includes(value.fixedId))
+  )
+}
 function isWallpapers(value: unknown): boolean {
   return (
     isRecord(value) &&
-    (value.light === undefined || isWallpaper(value.light)) &&
-    (value.dark === undefined || isWallpaper(value.dark))
+    (value.light === undefined || isWallpaperGroup(value.light)) &&
+    (value.dark === undefined || isWallpaperGroup(value.dark)) &&
+    (value.rotation === undefined ||
+      (isRecord(value.rotation) &&
+        typeof value.rotation.enabled === 'boolean' &&
+        ['random', 'ordered'].includes(String(value.rotation.order))))
   )
 }
 

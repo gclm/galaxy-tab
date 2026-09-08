@@ -256,7 +256,6 @@ export function preserveExcludedScope(
 export function expectedAppliedSnapshot(
   beforeApply: SyncSnapshotV1,
   target: SyncSnapshotV1,
-  wallpaperVariants: readonly ('dark' | 'light')[] = [],
 ): SyncSnapshotV1 {
   const result = preserveExcludedScope(beforeApply, target, target.scope)
   if (target.scope.quickLinks && target.quickLinks) copyCategory(result, target, 'quickLinks')
@@ -273,12 +272,9 @@ export function expectedAppliedSnapshot(
       target.scope[key] && target.optional?.[key] !== undefined,
     )
   }
-  for (const variant of wallpaperVariants) {
-    const wallpaper = target.optional?.wallpapers?.[variant]
-    if (!target.scope.wallpapers || !wallpaper) continue
+  if (target.scope.wallpapers && target.optional?.wallpapers) {
     result.optional ??= {}
-    result.optional.wallpapers ??= {}
-    result.optional.wallpapers[variant] = structuredClone(wallpaper)
+    result.optional.wallpapers = structuredClone(target.optional.wallpapers)
   }
   if (target.scope.settings) {
     const targetSettings = target.settings ?? {}

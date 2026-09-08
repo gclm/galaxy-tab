@@ -66,6 +66,13 @@ export function resolveSyncConflicts(input: {
     }
   }
   if (choices.size !== merged.conflicts.length) throw new TypeError('Unknown conflict resolution')
+  for (const variant of ['light', 'dark'] as const) {
+    const group = snapshot.optional?.wallpapers?.[variant]
+    if (!group) continue
+    const ids = new Set(group.items.map((item) => item.id))
+    group.order = [...new Set([...group.order, ...ids])].filter((id) => ids.has(id))
+    if (!ids.has(group.fixedId)) group.fixedId = group.order[0] ?? ''
+  }
   pruneInlineImages(snapshot)
   const validation = validateSyncSnapshot(snapshot)
   if (!validation.ok) throw new TypeError(validation.error)
@@ -79,6 +86,8 @@ export function readConflictValue(
 ): JsonValue | undefined {
   const path = conflict.path
   for (const [prefix, items] of [
+    ['optional.wallpapers.light.items.', snapshot.optional?.wallpapers?.light?.items],
+    ['optional.wallpapers.dark.items.', snapshot.optional?.wallpapers?.dark?.items],
     ['quickLinks.items.', snapshot.quickLinks?.items],
     ['quickLinks.groups.', snapshot.quickLinks?.groups],
     ['customSearchEngines.items.', snapshot.customSearchEngines?.items],
@@ -117,6 +126,12 @@ function entityTarget(
   snapshot: SyncSnapshotV1,
   conflict: SyncConflict,
 ): { items: EntityValue[]; order: string[] } {
+  for (const variant of ['light', 'dark'] as const) {
+    if (!conflict.path.startsWith(`optional.wallpapers.${variant}.items.`)) continue
+    const group = snapshot.optional?.wallpapers?.[variant]
+    if (!group) throw new TypeError('Wallpaper conflict has no group')
+    return { items: group.items as unknown as EntityValue[], order: group.order }
+  }
   if (conflict.path.startsWith('quickLinks.items.')) {
     const links = quickLinks(snapshot)
     return {
@@ -142,6 +157,7 @@ function entityTarget(
 }
 
 function entityId(conflict: SyncConflict): string {
+  if (conflict.path.startsWith('optional.wallpapers.')) return conflict.path.split('.')[4]!
   const prefix = conflict.path.startsWith('quickLinks.items.')
     ? 'quickLinks.items.'
     : conflict.path.startsWith('quickLinks.groups.')
@@ -263,6 +279,16 @@ function insertEntityOrder(
     insertAfterSource(fallbackOrder, quickLinks(source).groupOrder, sourceId, insertedId)
     return
   }
+  if (conflict.path.startsWith('optional.wallpapers.')) {
+    const variant = conflict.path.split('.')[2] as 'light' | 'dark'
+    insertAfterSource(
+      fallbackOrder,
+      source.optional?.wallpapers?.[variant]?.order ?? [],
+      sourceId,
+      insertedId,
+    )
+    return
+  }
   const sourceOrder = searchEngines(source).order
   insertAfterSource(fallbackOrder, sourceOrder, sourceId, insertedId)
 }
@@ -285,6 +311,20 @@ function applyPathValue(
   value: JsonValue | undefined,
   present: boolean,
 ): void {
+  for (const variant of ['light', 'dark'] as const) {
+    const prefix = `optional.wallpapers.${variant}.items.`
+    if (path.startsWith(prefix)) {
+      const group = snapshot.optional?.wallpapers?.[variant]
+      if (!group) throw new TypeError('Wallpaper conflict has no group')
+      applyEntityField(
+        group.items as unknown as EntityValue[],
+        path.slice(prefix.length),
+        value,
+        present,
+      )
+      return
+    }
+  }
   if (path.startsWith('quickLinks.location.')) {
     moveQuickLink(snapshot, path.slice('quickLinks.location.'.length), present ? value : undefined)
     return

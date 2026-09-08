@@ -57,6 +57,8 @@ const SETTING_TITLE_KEYS: Record<string, string> = {
   'search.expandWidth': 'search.expandWidth',
   'search.borderRadius': 'search.borderRadius',
   'background.bgType': 'background.change',
+  'background.solid.light': 'background.library.solid',
+  'background.solid.dark': 'background.library.solid',
   'background.showDownloadBtn': 'background.showDownloadBtn',
   'background.vignette': 'background.vignette',
   'background.parallax': 'background.parallax',
@@ -261,8 +263,19 @@ function displayTitle(
   if (path === 'customSearchEngines') return t('webdavSync.conflicts.categories.search-engines')
   if (path === 'optional.blockedTopSites')
     return t('webdavSync.conflicts.categories.blocked-top-sites')
-  if (path === 'optional.wallpapers.light') return t('webdavSync.conflicts.fields.wallpaperLight')
-  if (path === 'optional.wallpapers.dark') return t('webdavSync.conflicts.fields.wallpaperDark')
+  if (path.startsWith('optional.wallpapers.rotation')) return t('background.library.rotation')
+  for (const variant of ['light', 'dark'] as const) {
+    if (!path.startsWith(`optional.wallpapers.${variant}`)) continue
+    const group = t(
+      `webdavSync.conflicts.fields.${variant === 'light' ? 'wallpaperLight' : 'wallpaperDark'}`,
+    )
+    const field = path.endsWith('.order')
+      ? 'wallpaperOrder'
+      : path.endsWith('.fixedId')
+        ? 'wallpaperFixed'
+        : ''
+    return field ? `${group} · ${t(`webdavSync.conflicts.fields.${field}`)}` : group
+  }
   if (path.startsWith('optional.wallpapers')) return t('webdavSync.conflicts.fields.wallpaper')
   return displaySyncCategory(conflict.category, t)
 }
@@ -432,8 +445,24 @@ function displayBlockedSites(value: JsonValue, t: ConflictTranslator): string {
 }
 
 function displayWallpapers(value: JsonValue, t: ConflictTranslator): string {
+  if (typeof value === 'boolean')
+    return t(value ? 'webdavSync.conflicts.values.enabled' : 'webdavSync.conflicts.values.disabled')
+  if (value === 'random' || value === 'ordered') return t(`background.library.${value}`)
+  if (typeof value === 'string') return value.slice(0, 8)
+  if (Array.isArray(value))
+    return value.map((item) => (typeof item === 'string' ? item.slice(0, 8) : '')).join(' → ')
+  if (isObject(value) && typeof value.assetId === 'string')
+    return `${value.mimeType} · ${(Number(value.size) / 1024 / 1024).toFixed(2)} MB · ${String(value.sha256).slice(0, 8)}`
   if (!isObject(value)) return t('webdavSync.conflicts.values.changed')
-  const count = Number(Boolean(value.light)) + Number(Boolean(value.dark))
+  const count = Array.isArray(value.items)
+    ? value.items.length
+    : typeof value.assetId === 'string'
+      ? 1
+      : [value.light, value.dark].reduce<number>(
+          (sum, group) =>
+            sum + (isObject(group) && Array.isArray(group.items) ? group.items.length : 0),
+          0,
+        )
   return t('webdavSync.conflicts.values.wallpaperCount', { count })
 }
 
@@ -470,6 +499,7 @@ function displayColorMode(value: JsonValue, t: ConflictTranslator): string {
 
 function displayBackgroundType(value: JsonValue, t: ConflictTranslator): string {
   const keys: Record<string, string> = {
+    none: 'background.library.solid',
     bing: 'background.bingFrom',
     local: 'background.type.local',
     online: 'background.type.online',

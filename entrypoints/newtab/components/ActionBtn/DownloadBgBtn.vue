@@ -6,7 +6,11 @@ import { useTranslation } from 'i18next-vue'
 import { downloadBlob } from '@/shared/download'
 import { useSettingsStore } from '@/shared/settings'
 
-import { bingWallpaperURLGetter, getCachedOnlineWallpaper } from '@newtab/shared/wallpaper'
+import {
+  bingWallpaperURLGetter,
+  getCachedOnlineWallpaper,
+  useLocalWallpaperStore,
+} from '@newtab/shared/wallpaper'
 
 const playing = ref(false)
 const canAnimation = ref(true)
@@ -47,6 +51,10 @@ const extMap: Record<string, string> = {
   'image/apng': 'png',
   'image/heic': 'heic',
   'image/heif': 'heif',
+  'video/webm': 'webm',
+  'video/mp4': 'mp4',
+  'video/ogg': 'ogv',
+  'video/quicktime': 'mov',
 }
 
 function downloadImageBlob(blob: Blob) {
@@ -74,6 +82,13 @@ function downloadBing() {
 async function download() {
   if (settings.background.bgType === 'online') {
     await downloadOnline()
+  } else if (settings.background.bgType === 'local') {
+    const current = useLocalWallpaperStore().displayed
+    if (!current) return
+    const blob = await (await fetch(current.url)).blob()
+    if (current.item.mediaType === 'video')
+      downloadBlob(blob, `wallpaper.${extMap[blob.type.split(';')[0]!] || 'bin'}`)
+    else downloadImageBlob(blob)
   } else if (settings.background.bgType === 'bing') {
     downloadBing()
   }

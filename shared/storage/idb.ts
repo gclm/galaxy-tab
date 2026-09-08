@@ -25,7 +25,7 @@ export interface BookmarkCacheMetadata {
 
 export type BookmarkCacheEntry = BookmarkCacheMetadata | Browser.bookmarks.BookmarkTreeNode[]
 
-interface LemonDBSchema extends DBSchema {
+export interface LemonDBSchema extends DBSchema {
   favicon: {
     key: string
     value: FaviconCacheEntry
@@ -54,6 +54,10 @@ interface LemonDBSchema extends DBSchema {
     key: string
     value: unknown
   }
+  wallpaperLibrary: {
+    key: string
+    value: unknown
+  }
 }
 
 const DB_NAME = '柠檬起始页'
@@ -66,6 +70,7 @@ const REQUIRED_STORES: readonly StoreName[] = [
   'onlineWallpaperCache',
   'bookmarkCache',
   'webdavSync',
+  'wallpaperLibrary',
 ]
 
 let dbPromise: Promise<IDBPDatabase<LemonDBSchema>> | null = null
@@ -89,7 +94,7 @@ async function probeExistingDB(): Promise<{ version: number; needsUpgrade: boole
   })
 }
 
-function getDB() {
+export function getDB() {
   if (!dbPromise) {
     dbPromise = (async () => {
       const { version: existingVersion, needsUpgrade } = await probeExistingDB()
@@ -128,6 +133,7 @@ export type StoreName =
   | 'onlineWallpaperCache'
   | 'bookmarkCache'
   | 'webdavSync'
+  | 'wallpaperLibrary'
 
 /** 获取指定 store 中某个 key 的值 */
 export async function idbGet<S extends StoreName>(

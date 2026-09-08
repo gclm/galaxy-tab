@@ -16,6 +16,8 @@ export async function downloadLegacySettingsBackup() {
 /** 清除扩展持久化数据；默认保留历史云端数据，避免用户未选择时一并删除。 */
 export async function clearExtensionData({ includeSync = false }: { includeSync?: boolean } = {}) {
   const { idbClearAll } = await import('@/shared/storage/idb')
+  const { clearWallpaperLibrary } = await import('@/shared/wallpaperLibrary')
+  await clearWallpaperLibrary()
 
   const tasks = [
     localStorage.clear(),

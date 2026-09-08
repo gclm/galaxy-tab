@@ -54,7 +54,9 @@ export async function listBrowserSyncHistory(): Promise<BrowserSyncHistoryEntry[
           .map((variant) => [
             variant,
             revision.snapshot.optional?.wallpapers?.[variant]
-              ? availableAssets.has(revision.snapshot.optional.wallpapers[variant]!.assetId)
+              ? revision.snapshot.optional.wallpapers[variant]!.items.every((item) =>
+                  availableAssets.has(item.assetId),
+                )
               : undefined,
           ])
           .filter(([, available]) => available !== undefined),
@@ -436,10 +438,10 @@ function prepareHistoricalSnapshot(
   const wallpaperUnavailable: Array<'dark' | 'light'> = []
   for (const variant of ['light', 'dark'] as const) {
     const historical = snapshot.optional?.wallpapers?.[variant]
-    if (!historical || knownAssets.has(historical.assetId)) continue
+    if (!historical || historical.items.every((item) => knownAssets.has(item.assetId))) continue
     wallpaperUnavailable.push(variant)
     const replacement = current.snapshot.optional?.wallpapers?.[variant]
-    if (replacement && knownAssets.has(replacement.assetId)) {
+    if (replacement && replacement.items.every((item) => knownAssets.has(item.assetId))) {
       snapshot.optional!.wallpapers![variant] = structuredClone(replacement)
     } else if (snapshot.optional?.wallpapers) {
       delete snapshot.optional.wallpapers[variant]

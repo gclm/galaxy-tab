@@ -71,5 +71,12 @@ export function deriveSnapshotTombstones(
     base.customSearchEngines?.items.map((item) => item.id) ?? [],
     next.customSearchEngines?.items.map((item) => item.id) ?? [],
   )
+  for (const variant of ['light', 'dark'] as const) {
+    appendDeleted(
+      `wallpaper-${variant}`,
+      base.optional?.wallpapers?.[variant]?.order ?? [],
+      next.optional?.wallpapers?.[variant]?.order ?? [],
+    )
+  }
   return result
 }

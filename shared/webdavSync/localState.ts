@@ -1,7 +1,7 @@
 import { storage } from '#imports'
 import { browser } from 'wxt/browser'
 
-import { idbClear, idbDelete, idbGet, idbSet } from '@/shared/storage/idb'
+import { idbClear, idbDelete, idbGet, idbSet, idbSetMany } from '@/shared/storage/idb'
 
 import type {
   LocalSyncStateV1,
@@ -84,6 +84,7 @@ interface StoredWebDavSecretV1 {
 export interface PendingApplyV1 {
   version: 1
   operationId: string
+  wallpaperSignature?: string
   revisionId: string
   phase:
     | 'validated'
@@ -97,13 +98,14 @@ export interface PendingApplyV1 {
   scope: SyncScopePreferences
   /** 已先于设置写入的主题偏好，避免恢复时重复触发主题切换。 */
   uiPreferencesApplied?: true
-  wallpapers?: Partial<Record<'dark' | 'light', PendingWallpaperApplyV1>>
+  wallpapers?: Record<string, PendingWallpaperApplyV1>
 }
 
 export interface PendingWallpaperApplyV1 {
+  variant: 'light' | 'dark'
+  itemId: string
   assetId: string
   mimeType: string
-  previousId: string
   sha256: string
   size: number
   temporaryKey: string
@@ -264,8 +266,11 @@ export function getPendingApply(): Promise<PendingApplyV1 | undefined> {
   return idbGet('webdavSync', PENDING_APPLY_KEY) as Promise<PendingApplyV1 | undefined>
 }
 
-export function setPendingApply(value: PendingApplyV1): Promise<void> {
-  return idbSet('webdavSync', PENDING_APPLY_KEY, value)
+export function setPendingApply(
+  value: PendingApplyV1,
+  resources: ReadonlyArray<readonly [string, Blob]> = [],
+): Promise<void> {
+  return idbSetMany('webdavSync', [...resources, [PENDING_APPLY_KEY, value]])
 }
 
 export function clearPendingApply(): Promise<void> {

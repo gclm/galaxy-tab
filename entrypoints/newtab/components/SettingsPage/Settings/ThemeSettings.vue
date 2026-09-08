@@ -17,6 +17,7 @@ import {
   usePermission,
 } from '@newtab/composables/usePermission'
 import { colorMode as mode, preferredDark } from '@newtab/shared/colorMode'
+import { useLocalWallpaperStore } from '@newtab/shared/wallpaper'
 
 import SyncAvailabilityIcon from '../components/SyncAvailabilityIcon.vue'
 
@@ -119,12 +120,11 @@ const beforeMonetChange = async () => {
   if (settings.background.bgType === BgType.Bing) return true
   // 本地壁纸必须是图片才能开
   if (settings.background.bgType === BgType.Local) {
-    if (
-      settings.background.local.mediaType === 'image' ||
-      settings.background.localDark.mediaType === 'image'
+    const library = useLocalWallpaperStore()
+    await library.init()
+    return [...library.library.light.items, ...library.library.dark.items].some(
+      (item) => item.mediaType === 'image',
     )
-      return true
-    else return false
   }
 
   // 剩下在线壁纸

@@ -3,15 +3,8 @@
     "back": "Back to previous settings view"
   },
   "background": {
-    "alwaysFresh": "Always something new",
     "bingFrom": "Image source: Bing",
     "blur": "Blur intensity",
-    "button": {
-      "bathe": {
-        "moon": "Bathe in moonlight",
-        "sun": "Bathe in sunlight"
-      }
-    },
     "cache": {
       "askEnable": {
         "message": "Caching reduces repeated downloads and keeps cached wallpapers available offline. Enable wallpaper caching?",
@@ -24,14 +17,12 @@
       "noExpires": "Cache never expires"
     },
     "change": "Change background",
-    "chooseImageOrVideo": "Choose an image or video to use as wallpaper",
     "custom": "Custom",
     "fasterBgAnim": "Faster background display on startup",
     "mask": {
       "color": "Mask color",
       "enable": "Enable mask"
     },
-    "myZoneMyRule": "Your space. Your rules.",
     "onlineTips": {
       "a": "Submit after pressing the Enter key or when the input field loses focus.",
       "b": "The wallpaper caching strategy depends on the browser, and wallpapers may not be accessible offline.",
@@ -63,9 +54,7 @@
     "preferenceTitle": "Wallpaper preferences",
     "resolution": "Resolution",
     "showDownloadBtn": "Show download button",
-    "showDownloadBtnNote": "Available only for Bing and online wallpapers.",
-    "sunMoonSaying": "When the sun’s out, bathe in sunlight. But when the moon’s out, bathe in moonlight!",
-    "tip": "If no background is set for dark mode, the light mode background or video will be used.",
+    "showDownloadBtnNote": "Download the displayed Bing, online, or local wallpaper",
     "title": "Background",
     "today": "Today",
     "type": {
@@ -91,7 +80,36 @@
       },
       "unknownSource": "Using images from unknown sources as backgrounds may expose your device to attacks. Do you want to continue?"
     },
-    "youLikeFine": "If you like it, that’s fine~"
+    "youLikeFine": "If you like it, that’s fine~",
+    "library": {
+      "solid": "Solid color",
+      "light": "Light mode",
+      "dark": "Dark mode",
+      "reset": "Reset",
+      "group": "Wallpaper group",
+      "download": "Download",
+      "add": "Add",
+      "manage": "Manage",
+      "done": "Done",
+      "remove": "Remove",
+      "expand": "Show all",
+      "collapse": "Collapse",
+      "inherit": "When no dark mode wallpapers are set, light mode wallpapers will be used automatically.",
+      "empty": "Add images or videos. Select multiple files or drop them here.",
+      "rotation": "Wallpaper rotation",
+      "order": "Rotation order",
+      "random": "Random",
+      "ordered": "List order",
+      "image": "Image",
+      "video": "Video",
+      "loading": "Reading details",
+      "unavailable": "Unavailable",
+      "dragAddHint": "Drag images or videos here to add them",
+      "sortHint": "Drag to reorder",
+      "importFailed": "{{count}} files could not be added. Other files were kept.",
+      "confirmRemove": "Remove the {{count}} selected wallpapers?",
+      "clearPreviews": "Clear preview cache"
+    }
   },
   "bookmark": {
     "defaultSort": "Default sorting",
@@ -437,7 +455,8 @@
       "wallpaperFailed": "The wallpaper did not pass upload or integrity checks. Other data will still sync.",
       "wallpaperScopeDisabled": "Local image wallpapers stay on this device. You can include them in the WebDAV sync scope.",
       "wallpaperTooLarge": "This image is over 20 MB, so the wallpaper is not synced. Other data will still sync.",
-      "wallpaperVideo": "Video wallpapers are not synced through WebDAV."
+      "wallpaperVideo": "Video wallpapers are not synced through WebDAV.",
+      "wallpaperPartial": "Only available static images up to 20 MiB sync. Videos, animated images, and other skipped files stay on this device."
     }
   },
   "theme": {
@@ -522,7 +541,9 @@
         "searchEngineUrl": "Search engine address",
         "wallpaper": "Wallpaper",
         "wallpaperDark": "Dark wallpaper",
-        "wallpaperLight": "Light wallpaper"
+        "wallpaperLight": "Light wallpaper",
+        "wallpaperOrder": "Wallpaper list order",
+        "wallpaperFixed": "Fixed wallpaper"
       },
       "finish": "Create merge version",
       "local": "Keep local data",

@@ -5,8 +5,8 @@ import CloudDoneRound from '~icons/ic/round-cloud-done'
 import LockRound from '~icons/ic/round-lock'
 import RoundWarningIcon from '~icons/ic/round-warning'
 
-import { useSettingsStore } from '@/shared/settings'
 import { idbGet } from '@/shared/storage/idb'
+import { readWallpaperLibrary, wallpaperStore } from '@/shared/wallpaperLibrary'
 import { connectSyncConnection, previewSyncConnection } from '@/shared/webdavSync/bridge'
 import type {
   BrowserWebDavSetupInput,
@@ -20,7 +20,6 @@ import { classifyWebDavAddress, WebDavError } from '@/shared/webdavSync/webdav'
 const emit = defineEmits<{ connected: [] }>()
 const model = defineModel<boolean>({ required: true })
 const { t } = useTranslation('settings')
-const settings = useSettingsStore()
 
 const step = ref(0)
 const testing = ref(false)
@@ -28,7 +27,7 @@ const connecting = ref(false)
 const preview = shallowRef<BrowserWebDavSetupPreview>()
 const testError = ref('')
 const localHttpAccepted = ref(false)
-const wallpaperInfo = reactive({ count: 0, totalSize: 0, lightSize: 0, darkSize: 0 })
+const wallpaperInfo = reactive({ count: 0, totalSize: 0, oversized: 0 })
 const scope = reactive({ ...DEFAULT_SYNC_SCOPE })
 const form = reactive({
   url: '',
@@ -86,12 +85,6 @@ const canContinue = computed(() => {
 })
 
 const formattedWallpaperSize = computed(() => formatBytes(wallpaperInfo.totalSize))
-const oversizedWallpaperCount = computed(
-  () =>
-    [wallpaperInfo.lightSize, wallpaperInfo.darkSize].filter(
-      (size) => size > MAX_SYNC_WALLPAPER_BYTES,
-    ).length,
-)
 const hasPreviewConflicts = computed(() => Boolean(preview.value?.conflicts.length))
 const comparisonTitle = computed(() =>
   preview.value?.state === 'empty'
@@ -156,18 +149,10 @@ function readableError(error: unknown) {
 }
 
 async function inspectWallpapers() {
-  const candidates = [
-    {
-      id: settings.background.local.id,
-      mediaType: settings.background.local.mediaType,
-      store: 'wallpaper' as const,
-    },
-    {
-      id: settings.background.localDark.id,
-      mediaType: settings.background.localDark.mediaType,
-      store: 'wallpaperDark' as const,
-    },
-  ]
+  const library = await readWallpaperLibrary()
+  const candidates = (['light', 'dark'] as const).flatMap((variant) =>
+    library[variant].items.map((item) => ({ ...item, store: wallpaperStore(variant) })),
+  )
   const sizes = await Promise.all(
     candidates.map(async (candidate) => {
       if (!candidate.id || candidate.mediaType !== 'image') return 0
@@ -175,8 +160,7 @@ async function inspectWallpapers() {
       return blob instanceof Blob ? blob.size : 0
     }),
   )
-  wallpaperInfo.lightSize = sizes[0] ?? 0
-  wallpaperInfo.darkSize = sizes[1] ?? 0
+  wallpaperInfo.oversized = sizes.filter((size) => size > MAX_SYNC_WALLPAPER_BYTES).length
   wallpaperInfo.count = sizes.filter(Boolean).length
   wallpaperInfo.totalSize = sizes.reduce((sum, size) => sum + size, 0)
 }
@@ -476,12 +460,12 @@ watch(
                 <el-switch v-model="scope.wallpapers" />
               </label>
               <el-alert
-                v-if="oversizedWallpaperCount"
+                v-if="wallpaperInfo.oversized"
                 type="warning"
                 :closable="false"
                 show-icon
                 :title="
-                  t('webdavSync.setup.wallpaper.oversized', { count: oversizedWallpaperCount })
+                  t('webdavSync.setup.wallpaper.oversized', { count: wallpaperInfo.oversized })
                 "
                 style="grid-column: 1 / -1; margin-top: 10px"
               />

@@ -5,9 +5,11 @@ import {
   migrateFromVer8To9,
   migrateFromVer9To10,
 } from './migrate'
+import { migrateFromVer11To12 } from './migrate/fromVer11'
 import { normalizeCurrentSettings } from './normalize'
 import type {
   SettingsSchemaV10,
+  SettingsSchemaV11,
   SettingsSchemaV7,
   SettingsSchemaV8,
   SettingsSchemaV9,
@@ -18,6 +20,7 @@ export type MigratableSettings =
   | SettingsSchemaV8
   | SettingsSchemaV9
   | SettingsSchemaV10
+  | SettingsSchemaV11
   | CURRENT_CONFIG_SCHEMA
 
 export function migrateSettingsOneVersion(settings: MigratableSettings): MigratableSettings {
@@ -30,6 +33,8 @@ export function migrateSettingsOneVersion(settings: MigratableSettings): Migrata
       return migrateFromVer9To10(settings)
     case 10:
       return migrateFromVer10To11(settings)
+    case 11:
+      return migrateFromVer11To12(settings)
     default:
       throw new Error(`Unsupported config version: ${settings.version}`)
   }

@@ -20,6 +20,8 @@ const EXCLUDED_SYNC_SETTING_PATHS = [
   'background.localDark.mediaType',
   'background.localDark.url',
   'background.online.url',
+  'background.rotation.enabled',
+  'background.rotation.order',
 ] as const
 
 /**
@@ -66,6 +68,8 @@ export const SYNC_SETTING_PATHS = [
   'search.expandWidth',
   'search.borderRadius',
   'background.bgType',
+  'background.solid.light',
+  'background.solid.dark',
   'background.showDownloadBtn',
   'background.vignette',
   'background.parallax',
@@ -239,8 +243,8 @@ export function syncSettingsChanged(previous: unknown, next: unknown): boolean {
 }
 
 const SYNC_WALLPAPER_SETTING_PATHS = [
-  'background.local.id',
-  'background.localDark.id',
+  'background.rotation.enabled',
+  'background.rotation.order',
   'background.online.url',
 ] as const
 

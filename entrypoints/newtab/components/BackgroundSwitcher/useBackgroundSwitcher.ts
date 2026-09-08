@@ -1,10 +1,6 @@
-import { promiseTimeout, useDark } from '@vueuse/core'
-
-import type { UploadProps, UploadRequestOptions } from 'element-plus'
 import i18next from 'i18next'
 
 import { BgType } from '@/shared/enums'
-import { isMediaFile } from '@/shared/media'
 import { useSettingsStore } from '@/shared/settings'
 
 import {
@@ -12,159 +8,10 @@ import {
   PermissionResult,
   usePermission,
 } from '@newtab/composables/usePermission'
-import {
-  clearAllOnlineWallpaperCache,
-  uploadBackground,
-  useDarkWallpaperStorge,
-  useWallpaperStorge,
-  useWallpaperUrlStore,
-} from '@newtab/shared/wallpaper'
-
-// 大小阈值 (字节)，超过会提示。这里设置为 50MB
-const WARN_SIZE_BYTES = 50 * 1024 * 1024
-
+import { clearAllOnlineWallpaperCache } from '@newtab/shared/wallpaper'
 let isShowingPermissionDialog = false
-
-function useBackgroundSwitcher() {
+export default function useBackgroundSwitcher() {
   const settings = useSettingsStore()
-  const wallpaperUrlStore = useWallpaperUrlStore()
-  const isDark = useDark()
-  const isDarkBg = ref(false)
-
-  // 存储上传后的元信息
-  const metaLight = shallowRef<{
-    width?: number
-    height?: number
-    duration?: number
-    size?: number
-  } | null>(null)
-  const metaDark = shallowRef<{
-    width?: number
-    height?: number
-    duration?: number
-    size?: number
-  } | null>(null)
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
-
-  const readMediaMeta = (
-    file: File,
-    cb: (meta: { width?: number; height?: number; duration?: number }, file?: File) => void,
-  ) => {
-    if (!file) return
-    if (file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file)
-      const img = new Image()
-      img.onload = () => {
-        cb({ width: img.naturalWidth, height: img.naturalHeight }, file)
-        URL.revokeObjectURL(url)
-      }
-      img.onerror = () => {
-        URL.revokeObjectURL(url)
-        cb({})
-      }
-      img.src = url
-    } else if (file.type.startsWith('video/')) {
-      const url = URL.createObjectURL(file)
-      const video = document.createElement('video')
-      const cleanup = () => {
-        video.onloadedmetadata = null
-        video.onerror = null
-        video.src = ''
-        URL.revokeObjectURL(url)
-      }
-      video.onloadedmetadata = () => {
-        cb({ width: video.videoWidth, height: video.videoHeight, duration: video.duration }, file)
-        cleanup()
-      }
-      video.onerror = () => {
-        cleanup()
-        cb({})
-      }
-      video.src = url
-    } else {
-      cb({})
-    }
-  }
-
-  const beforeBackgroundUpload: UploadProps['beforeUpload'] = async (rawFile: File) => {
-    if (!isMediaFile(rawFile)) {
-      ElMessage.error(i18next.t('settings:background.warning.fileIsNotImage'))
-      return false
-    }
-
-    // 检查大小
-    if (rawFile.size > WARN_SIZE_BYTES) {
-      // 提示用户文件较大，确认是否继续
-      try {
-        await ElMessageBox.confirm(
-          i18next.t('settings:background.warning.tooLarge.message', {
-            size: formatBytes(rawFile.size),
-          }),
-          i18next.t('settings:background.warning.tooLarge.title'),
-          { type: 'warning' },
-        )
-      } catch {
-        // 用户取消上传
-        return false
-      }
-    }
-
-    return true
-  }
-
-  const setMeta = (m: { width?: number; height?: number; duration?: number }, file?: File) => {
-    if (!file) return
-    if (isDarkBg.value) {
-      metaDark.value = { ...metaDark.value, ...m, size: file.size }
-    } else {
-      metaLight.value = { ...metaLight.value, ...m, size: file.size }
-    }
-  }
-
-  const handleUpload = async (option: UploadRequestOptions) => {
-    const file = option.file as File
-
-    await uploadBackground(file, isDarkBg.value)
-
-    // 上传完成后立即读取元信息以展示
-    readMediaMeta(file, setMeta)
-    if (
-      settings.theme.monetColor &&
-      settings.background.local.mediaType !== 'image' &&
-      settings.background.localDark.mediaType !== 'image'
-    ) {
-      ElMessage.info(i18next.t('settings:background.warning.monetColorDisabled'))
-      settings.theme.monetColor = false
-    }
-  }
-
-  const deleteBackgroundVariant = async (variant: 'light' | 'dark') => {
-    const dark = variant === 'dark'
-    const oldUrl = dark ? settings.background.localDark.url : settings.background.local.url
-    if (dark) {
-      settings.background.localDark = { id: '', url: '', mediaType: undefined }
-      metaDark.value = null
-    } else {
-      settings.background.local = { id: '', url: '', mediaType: undefined }
-      metaLight.value = null
-    }
-
-    await nextTick()
-    await promiseTimeout(200)
-    if (oldUrl) URL.revokeObjectURL(oldUrl)
-    await (dark ? useDarkWallpaperStorge : useWallpaperStorge).clear()
-    await wallpaperUrlStore.clearUrl(variant)
-  }
-
-  const deleteLocalBg = () => deleteBackgroundVariant(isDarkBg.value ? 'dark' : 'light')
-
   // 在线壁纸相关
   const tempOnlineUrl = ref('') // 用于在线壁纸输入框的临时存储，避免频繁修改 settingsStore
 
@@ -279,57 +126,6 @@ function useBackgroundSwitcher() {
     isShowingPermissionDialog = false
   }
 
-  onMounted(async () => {
-    watch(
-      isDark,
-      (newVal) => {
-        if (settings.background.localDark.id) {
-          isDarkBg.value = newVal
-        }
-      },
-      { immediate: true },
-    )
-
-    const loadMetadata = async (variant: 'light' | 'dark') => {
-      const dark = variant === 'dark'
-      const background = dark ? settings.background.localDark : settings.background.local
-      if (!background.id) return
-
-      try {
-        await wallpaperUrlStore.getUrl(variant)
-        const file = await (dark ? useDarkWallpaperStorge : useWallpaperStorge).getItem<Blob>(
-          background.id,
-        )
-        if (!file) return
-
-        const meta = dark ? metaDark : metaLight
-        meta.value = { size: file.size }
-        readMediaMeta(file as File, (mediaMeta) => {
-          meta.value = { ...meta.value, ...mediaMeta }
-        })
-        background.mediaType ??= file.type.startsWith('video/') ? 'video' : 'image'
-      } catch {}
-    }
-
-    await Promise.all([loadMetadata('light'), loadMetadata('dark')])
-
-    if (settings.background.online.url) {
-      tempOnlineUrl.value = settings.background.online.url
-    }
-  })
-
-  return {
-    isDarkBg,
-    metaLight,
-    metaDark,
-    formatBytes,
-    beforeBackgroundUpload,
-    handleUpload,
-    deleteLocalBg,
-    tempOnlineUrl,
-    changeOnlineBg,
-    onlineImageWarn,
-  }
+  tempOnlineUrl.value = settings.background.online.url
+  return { tempOnlineUrl, changeOnlineBg, onlineImageWarn }
 }
-
-export default useBackgroundSwitcher

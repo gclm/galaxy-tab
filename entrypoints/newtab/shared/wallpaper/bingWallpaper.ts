@@ -169,7 +169,7 @@ class BingWallpaperURLGetter {
   private async resolveLocalBingWallpaperURL() {
     const settings = useSettingsStore()
     const { id } = settings.background.bing
-    const url = await useWallpaperUrlStore().getUrl('bing')
+    const url = await useWallpaperUrlStore().getUrl()
 
     if (url.value) {
       await this.syncCachedInfo(id)
@@ -325,7 +325,7 @@ class BingWallpaperURLGetter {
     if (!infoCached) await this.resetLastCheckTime(checkTime)
 
     try {
-      await useWallpaperUrlStore().getUrl('bing')
+      await useWallpaperUrlStore().getUrl()
     } catch (error) {
       console.warn('[bing-wallpaper] Failed to resolve the cached wallpaper URL:', error)
     }

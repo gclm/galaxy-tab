@@ -25,6 +25,8 @@ import {
   clearAllOnlineWallpaperCache,
   getCachedOnlineWallpaper,
   useWallpaperUrlStore,
+  useLocalWallpaperStore,
+  prepareWallpaper,
 } from '@newtab/shared/wallpaper'
 
 let animationDuration = 1250
@@ -42,9 +44,14 @@ if (settings.background.fastAnimation) {
 }
 
 const wallpaperUrlStore = useWallpaperUrlStore()
-const { lightUrl, darkUrl, bingUrl } = storeToRefs(wallpaperUrlStore)
-const activeLocalUrl = computed(() =>
-  isDark.value && settings.background.localDark.id ? darkUrl.value : lightUrl.value,
+const { bingUrl } = storeToRefs(wallpaperUrlStore)
+const localLibrary = useLocalWallpaperStore()
+const activeVariant = computed(() =>
+  isDark.value && localLibrary.library.dark.items.length ? 'dark' : 'light',
+)
+const renderedVideo = ref(false)
+const solidColor = computed(
+  () => settings.background.solid[isDark.value ? 'dark' : 'light'] || 'var(--el-bg-color-page)',
 )
 const isSwitching = ref(true)
 
@@ -160,26 +167,7 @@ const backgroundTranslate = computed(() => {
   return `${tx}px ${ty}px`
 })
 
-const isVideoWallpaper = computed(() => {
-  if (settings.background.bgType !== BgType.Local) {
-    return false
-  }
-
-  const mediaType = isDark.value
-    ? (settings.background.localDark.mediaType ?? settings.background.local.mediaType)
-    : settings.background.local.mediaType
-
-  return mediaType === 'video'
-})
-
-// 壁纸更新相关逻辑
-
-function getLocalMonetSourceKey() {
-  if (isDark.value && settings.background.localDark.id) {
-    return `local:dark:${settings.background.localDark.id}`
-  }
-  return settings.background.local.id ? `local:light:${settings.background.local.id}` : ''
-}
+const isVideoWallpaper = computed(() => renderedVideo.value)
 
 function getBingMonetSourceKey() {
   const bing = settings.background.bing
@@ -203,6 +191,7 @@ type BackgroundSource = {
   url: string
   sourceKey: string
   ownedObjectUrl: boolean
+  local?: NonNullable<typeof localLibrary.displayed>
 }
 
 function createOnlineWallpaperBlobUrl(
@@ -226,16 +215,31 @@ const bgTypeProviders: Record<BgType, () => Promise<BackgroundSource>> = {
     }
   },
   [BgType.Local]: async () => {
-    const target = isDark.value && settings.background.localDark.id ? 'dark' : 'light'
-    const targetUrl = target === 'dark' ? darkUrl : lightUrl
-    // Store watcher 已经解析出的 URL 必须直接复用；再次读取 Blob 会创建新的对象 URL，
-    // 反过来触发本组件 watcher 并形成无限加载循环。
-    if (!targetUrl.value) await wallpaperUrlStore.getUrl(target)
-    return {
-      url: targetUrl.value,
-      sourceKey: getLocalMonetSourceKey(),
-      ownedObjectUrl: false,
+    await localLibrary.init()
+    const variant = activeVariant.value
+    const id = await localLibrary.choose(variant)
+    const items = localLibrary.library[variant].items
+    const candidates = [
+      ...items.filter((item) => item.id === id),
+      ...items.filter((item) => item.id !== id),
+    ]
+    for (const item of candidates) {
+      try {
+        const url = await localLibrary.getUrl(variant, item)
+        if (localLibrary.displayed?.url !== url)
+          await prepareWallpaper(url, item.mediaType === 'video')
+        return {
+          url,
+          sourceKey: `local:${variant}:${item.id}:${item.sha256 ?? ''}`,
+          ownedObjectUrl: false,
+          local: { variant, item, url },
+        }
+      } catch (error) {
+        console.warn('[wallpaper] Could not load local wallpaper:', item.id, error)
+      }
     }
+    if (items.length) throw new Error('No local wallpaper could be loaded')
+    return { url: '', sourceKey: '', ownedObjectUrl: false }
   },
   [BgType.Online]: async () => {
     const rawUrl = settings.background.online.url
@@ -362,59 +366,62 @@ watch(
 let backgroundRequestVersion = 0
 let onlineFetchController: AbortController | null = null
 
+let backgroundLoads = 0
 async function updateBackgroundURL(type: BgType): Promise<void> {
-  const requestVersion = ++backgroundRequestVersion
-  invalidateMonet()
-  const provider = bgTypeProviders[type]
-  if (!provider) return
-
-  let source: BackgroundSource
+  backgroundLoads++
   try {
-    source = await provider()
-  } catch (error) {
+    const requestVersion = ++backgroundRequestVersion
+    invalidateMonet()
+    const provider = bgTypeProviders[type]
+    if (!provider) return
+
+    let source: BackgroundSource
+    try {
+      source = await provider()
+    } catch (error) {
+      if (requestVersion !== backgroundRequestVersion) return
+      console.error('Failed to update background URL:', error)
+      isSwitching.value = false
+      return
+    }
+    if (requestVersion !== backgroundRequestVersion) {
+      revokeDiscardedSource(source)
+      return
+    }
+
+    trackBackgroundBlobUrl(source)
+    activeMonetSourceKey.value = source.sourceKey
+
+    // 只在URL真正变化时才执行切换动画
+    if (source.url === bgURL.value) {
+      // 新请求可能在旧请求的切换动画期间切回当前壁纸；此时要主动结束旧切换状态。
+      isSwitching.value = false
+      return
+    }
+
+    // 新媒体已经解码就绪，同一渲染批次替换类型和 URL，不先清空旧画面。
     if (requestVersion !== backgroundRequestVersion) return
-    console.error('Failed to update background URL:', error)
+    renderedVideo.value = source.local?.item.mediaType === 'video'
+    localLibrary.displayed = source.local ?? null
+    bgURL.value = source.url
+
     isSwitching.value = false
-    return
-  }
-  if (requestVersion !== backgroundRequestVersion) {
-    revokeDiscardedSource(source)
-    return
-  }
-
-  trackBackgroundBlobUrl(source)
-  activeMonetSourceKey.value = source.sourceKey
-
-  // 只在URL真正变化时才执行切换动画
-  if (source.url === bgURL.value) {
-    // 新请求可能在旧请求的切换动画期间切回当前壁纸；此时要主动结束旧切换状态。
-    isSwitching.value = false
-    return
-  }
-
-  isSwitching.value = true
-
-  // 等待过渡动画
-  // 首次打开默认白屏，不需要等待白屏动画
-  if (bgURL.value !== '') {
     if (settings.perf.bgSwitchAnim) {
       await promiseTimeout(animationDuration)
       if (requestVersion !== backgroundRequestVersion) return
     }
-    // 不直接赋值是因为避免看到壁纸变形
-    // 直接赋值为原始 URL（Background 组件会决定是否包裹 url()）
-    bgURL.value = ''
+    shortenBgFadeDuration()
+  } finally {
+    backgroundLoads--
+    if (!backgroundLoads) {
+      const current = localLibrary.displayed
+      localLibrary.releaseExcept(
+        new Set(
+          current ? [`${current.variant}:${current.item.id}:${current.item.sha256 ?? ''}`] : [],
+        ),
+      )
+    }
   }
-  if (requestVersion !== backgroundRequestVersion) return
-
-  bgURL.value = source.url
-
-  isSwitching.value = false
-  if (settings.perf.bgSwitchAnim) {
-    await promiseTimeout(animationDuration)
-    if (requestVersion !== backgroundRequestVersion) return
-  }
-  shortenBgFadeDuration()
 }
 
 const { invalidate: invalidateMonet, onImageLoaded: onImgLoaded } = useBackgroundMonet({
@@ -432,9 +439,19 @@ watch(
   },
 )
 
-watch(activeLocalUrl, () => {
-  if (settings.background.bgType === BgType.Local) void updateBackgroundURL(BgType.Local)
-})
+watch(
+  [
+    activeVariant,
+    () => localLibrary.selected[activeVariant.value],
+    () =>
+      localLibrary.library[activeVariant.value].items
+        .map((item) => `${item.id}:${item.sha256 ?? ''}`)
+        .join(','),
+  ],
+  () => {
+    if (settings.background.bgType === BgType.Local) void updateBackgroundURL(BgType.Local)
+  },
+)
 
 watch(bingUrl, () => {
   if (settings.background.bgType === BgType.Bing) void updateBackgroundURL(BgType.Bing)
@@ -458,6 +475,9 @@ async function refreshBackground() {
     if (type === BgType.Bing) {
       await bingWallpaperURLGetter.refresh(true)
       await updateBackgroundURL(BgType.Bing)
+    } else if (type === BgType.Local) {
+      await localLibrary.choose(activeVariant.value, true)
+      await updateBackgroundURL(type)
     } else if (type === BgType.Online) {
       // Clear IDB cache only; the current blob URL is revoked through
       // updateBackgroundURL's normal revokeLastBlobUrl() path.
@@ -480,6 +500,8 @@ useEventListener('pageshow', async (e) => {
 onUnmounted(() => {
   // 卸载时释放 Blob URL
   revokeLastBlobUrl()
+  localLibrary.displayed = null
+  localLibrary.releaseExcept(new Set())
   // 使所有在途背景更新立即过期，避免卸载后继续写入响应式状态。
   backgroundRequestVersion += 1
   // 卸载时取消正在进行的在线壁纸网络请求
@@ -494,16 +516,28 @@ onUnmounted(() => {
     class="background-wrapper noselect"
     aria-hidden="true"
     :style="{
+      backgroundColor: solidColor,
       '--mask-color__light': settings.background.mask.light,
       '--mask-color__night': settings.background.mask.night,
       '--blur-intensity': `${settings.background.blur}px`,
       '--bg-opacity-duration': bgOpacityDuration,
     }"
   >
-    <div v-if="settings.background.mask.enabled" class="background-mask"></div>
-    <div v-if="settings.background.vignette" class="background__vignette" />
-    <Transition name="bg-fade">
+    <div
+      v-if="bgURL && settings.background.bgType !== BgType.None && settings.background.mask.enabled"
+      class="background-mask"
+    ></div>
+    <div
+      v-if="bgURL && settings.background.bgType !== BgType.None && settings.background.vignette"
+      class="background__vignette"
+    />
+    <Transition
+      name="bg-fade"
+      :css="settings.perf.bgSwitchAnim"
+      @before-leave="(element) => element.querySelector('video')?.pause()"
+    >
       <div
+        :key="bgURL"
         v-show="!isSwitching"
         ref="bgRef"
         class="background-container"
@@ -524,6 +558,7 @@ onUnmounted(() => {
           muted
           loop
           playsinline
+          @loadeddata="updateVideoPlayback"
         ></video>
         <img
           v-else-if="bgURL"

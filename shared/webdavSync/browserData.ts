@@ -1,8 +1,16 @@
 import { getQuickLinksStorageValue, quickLinksStorage } from '@/shared/quickLinks'
 import type { CURRENT_CONFIG_SCHEMA } from '@/shared/settings'
 import { normalizeCurrentSettings, settingsStorage } from '@/shared/settings'
-import { idbDelete, idbGet, idbSet } from '@/shared/storage/idb'
+import { idbDelete, idbGet } from '@/shared/storage/idb'
 import { getUiPreferences, patchUiPreferences } from '@/shared/uiPreferences'
+import {
+  readWallpaperLibrary,
+  wallpaperLibrarySignature,
+  updateWallpaperLibrary,
+  wallpaperStore,
+  type WallpaperItem,
+  type WallpaperVariant,
+} from '@/shared/wallpaperLibrary'
 
 import { customSearchEngineStorage } from '@newtab/shared/customSearchEngine/customSearchEngineStorage'
 import { blockedTopSitesStorage } from '@newtab/shared/storages/topSitesStorage'
@@ -68,34 +76,43 @@ export async function captureBrowserSyncSnapshotResult(
   })
   const resourceOmissions = await deduplicateInlineImages(snapshot, baseline)
   if (scope.wallpapers) {
-    const [light, dark] = await Promise.all([
-      captureWallpaper(settings.background.local, 'wallpaper'),
-      captureWallpaper(settings.background.localDark, 'wallpaperDark'),
-    ])
-    const lightValue =
-      light.value ?? (light.preserveBaseline ? baseline?.optional?.wallpapers?.light : undefined)
-    const darkValue =
-      dark.value ?? (dark.preserveBaseline ? baseline?.optional?.wallpapers?.dark : undefined)
-    if (lightValue || darkValue) {
-      snapshot.optional ??= {}
-      snapshot.optional.wallpapers = {
-        ...(lightValue ? { light: structuredClone(lightValue) } : {}),
-        ...(darkValue ? { dark: structuredClone(darkValue) } : {}),
+    const library = await readWallpaperLibrary()
+    snapshot.optional ??= {}
+    snapshot.optional.wallpapers = { rotation: structuredClone(settings.background.rotation) }
+    for (const variant of ['light', 'dark'] as const) {
+      const group = library[variant]
+      const items: SyncWallpaperV1[] = []
+      for (const item of group.items) {
+        const captured = await captureWallpaper(item, wallpaperStore(variant))
+        const reference =
+          captured.value ??
+          (captured.preserveBaseline
+            ? baseline?.optional?.wallpapers?.[variant]?.items.find((value) => value.id === item.id)
+            : undefined)
+        if (reference) items.push(reference)
+        if (captured.reason)
+          resourceOmissions.push({ kind: 'wallpaper', variant, reason: captured.reason })
+      }
+      const ids = items.map((item) => item.id)
+      const previousFixed = baseline?.optional?.wallpapers?.[variant]?.fixedId
+      snapshot.optional.wallpapers[variant] = {
+        items: [...items].sort((a, b) => a.id.localeCompare(b.id)),
+        order: ids,
+        fixedId: ids.includes(group.fixedId)
+          ? group.fixedId
+          : previousFixed && ids.includes(previousFixed)
+            ? previousFixed
+            : (ids[0] ?? ''),
       }
     }
-    if (light.reason)
-      resourceOmissions.push({ kind: 'wallpaper', variant: 'light', reason: light.reason })
-    if (dark.reason)
-      resourceOmissions.push({ kind: 'wallpaper', variant: 'dark', reason: dark.reason })
   }
   return { snapshot, resourceOmissions }
 }
 
-async function captureWallpaper(
-  selection: CURRENT_CONFIG_SCHEMA['background']['local'],
-  store: 'wallpaper' | 'wallpaperDark',
-) {
+async function captureWallpaper(selection: WallpaperItem, store: 'wallpaper' | 'wallpaperDark') {
   if (!selection.id) return {}
+  if (selection.metadataFailed)
+    return { preserveBaseline: true, reason: 'unavailable' } satisfies CapturedWallpaper
   if (selection.mediaType === 'video') {
     return { preserveBaseline: true, reason: 'unsupported' } satisfies CapturedWallpaper
   }
@@ -106,54 +123,37 @@ async function captureWallpaper(
   if (blob.size > MAX_SYNC_WALLPAPER_BYTES) {
     return { preserveBaseline: true, reason: 'too-large' } satisfies CapturedWallpaper
   }
-  const bytes = new Uint8Array(await blob.arrayBuffer())
-  try {
-    if (isAnimatedImage(bytes, blob.type)) throw new TypeError('Animated image')
-  } catch {
+  const cacheValid = selection.size === blob.size && selection.mimeType === blob.type
+  let sha256 = cacheValid ? selection.sha256 : undefined
+  if (cacheValid && selection.syncEligible === false)
     return { preserveBaseline: true, reason: 'unsupported' } satisfies CapturedWallpaper
+  if (!sha256 || selection.syncEligible !== true) {
+    const bytes = new Uint8Array(await blob.arrayBuffer())
+    const eligible = !isAnimatedImage(bytes, blob.type)
+    sha256 ??= await sha256Hex(bytes)
+    const hash = sha256
+    await updateWallpaperLibrary((library) => {
+      const variant = store === 'wallpaper' ? 'light' : 'dark'
+      const current = library[variant].items.find((item) => item.id === selection.id)
+      if (current) {
+        current.sha256 = hash
+        current.syncEligible = eligible
+        current.size = blob.size
+        current.mimeType = blob.type
+      }
+    })
+    if (!eligible)
+      return { preserveBaseline: true, reason: 'unsupported' } satisfies CapturedWallpaper
   }
-  const sha256 = await sha256Hex(bytes)
   return {
     value: {
+      id: selection.id,
       assetId: `sha256-${sha256}`,
       size: blob.size,
       mimeType: blob.type,
       sha256,
     },
   } satisfies CapturedWallpaper
-}
-
-export async function getUnavailableSelectedWallpaperVariants(): Promise<Set<'dark' | 'light'>> {
-  const settings = await settingsStorage.getValue()
-  const [light, dark] = await Promise.all([
-    selectedWallpaperIsUnavailable(settings.background.local, 'wallpaper'),
-    selectedWallpaperIsUnavailable(settings.background.localDark, 'wallpaperDark'),
-  ])
-  const result = new Set<'dark' | 'light'>()
-  if (light) result.add('light')
-  if (dark) result.add('dark')
-  return result
-}
-
-async function selectedWallpaperIsUnavailable(
-  selection: CURRENT_CONFIG_SCHEMA['background']['local'],
-  store: 'wallpaper' | 'wallpaperDark',
-): Promise<boolean> {
-  if (!selection.id) return false
-  if (selection.mediaType === 'video') return true
-  const blob = await idbGet(store, selection.id)
-  if (
-    !blob ||
-    blob.size > MAX_SYNC_WALLPAPER_BYTES ||
-    !blob.type.toLowerCase().startsWith('image/')
-  ) {
-    return true
-  }
-  try {
-    return isAnimatedImage(new Uint8Array(await blob.arrayBuffer()), blob.type)
-  } catch {
-    return true
-  }
 }
 
 async function writeSettings(snapshot: SyncSnapshotV1, scope: SyncScopePreferences): Promise<void> {
@@ -165,21 +165,8 @@ async function writeSettings(snapshot: SyncSnapshotV1, scope: SyncScopePreferenc
   if (snapshot.scope.onlineWallpaperUrl && snapshot.optional?.onlineWallpaperUrl !== undefined) {
     merged.background.online.url = snapshot.optional.onlineWallpaperUrl
   }
-  const pending = await getPendingApply()
-  if (pending?.wallpapers?.light) {
-    merged.background.local = {
-      id: pending.wallpapers.light.assetId,
-      url: '',
-      mediaType: 'image',
-    }
-  }
-  if (pending?.wallpapers?.dark) {
-    merged.background.localDark = {
-      id: pending.wallpapers.dark.assetId,
-      url: '',
-      mediaType: 'image',
-    }
-  }
+  if (scope.wallpapers && snapshot.optional?.wallpapers?.rotation)
+    merged.background.rotation = structuredClone(snapshot.optional.wallpapers.rotation)
   await settingsStorage.setValue(normalizeCurrentSettings(structuredClone(merged)))
 }
 
@@ -204,27 +191,116 @@ async function writeOptional(snapshot: SyncSnapshotV1, scope: SyncScopePreferenc
 
 async function continueApply(pending: PendingApplyV1, scope: SyncScopePreferences): Promise<void> {
   if (pending.phase === 'validated') {
-    for (const [variant, wallpaper] of Object.entries(pending.wallpapers ?? {}) as Array<
-      ['dark' | 'light', PendingWallpaperApplyV1]
-    >) {
-      const blob = await idbGet('webdavSync', wallpaper.temporaryKey)
-      if (!(blob instanceof Blob)) throw new Error('Pending wallpaper resource is missing')
-      const hash = await sha256Hex(await blob.arrayBuffer())
-      if (
-        blob.size !== wallpaper.size ||
-        blob.type !== wallpaper.mimeType ||
-        hash !== wallpaper.sha256
-      ) {
-        throw new Error('Pending wallpaper resource is invalid')
+    if (scope.wallpapers && pending.snapshot.optional?.wallpapers) {
+      const alreadyApplied = await idbGet('wallpaperLibrary', `applied:${pending.operationId}`)
+      if (!alreadyApplied) {
+        const current = await readWallpaperLibrary()
+        const protectedIds = new Map<WallpaperVariant, Set<string>>()
+        for (const variant of ['light', 'dark'] as const) {
+          const ids = new Set<string>()
+          for (const item of current[variant].items)
+            if (!(await captureWallpaper(item, wallpaperStore(variant))).value) ids.add(item.id)
+          protectedIds.set(variant, ids)
+        }
+        const resources = new Map<string, Blob>()
+        for (const wallpaper of Object.values(pending.wallpapers ?? {})) {
+          const blob = await idbGet('webdavSync', wallpaper.temporaryKey)
+          if (
+            !(blob instanceof Blob) ||
+            blob.size !== wallpaper.size ||
+            blob.type !== wallpaper.mimeType ||
+            (await sha256Hex(await blob.arrayBuffer())) !== wallpaper.sha256
+          )
+            throw new Error('Pending wallpaper resource is invalid')
+          resources.set(`${wallpaper.variant}:${wallpaper.itemId}`, blob)
+        }
+        // 未下载的已有文件也必须匹配远端引用，不能只检查 ID 存在。
+        for (const variant of ['light', 'dark'] as const) {
+          for (const reference of pending.snapshot.optional.wallpapers[variant]?.items ?? []) {
+            const key = `${variant}:${reference.id}`
+            if (protectedIds.get(variant)!.has(reference.id) || resources.has(key)) continue
+            const blob = await idbGet(wallpaperStore(variant), reference.id)
+            if (
+              !blob ||
+              blob.size !== reference.size ||
+              blob.type !== reference.mimeType ||
+              (await sha256Hex(await blob.arrayBuffer())) !== reference.sha256
+            )
+              throw new Error('Existing wallpaper does not match incoming reference')
+          }
+        }
+        await updateWallpaperLibrary(async (library, tx) => {
+          if (
+            pending.wallpaperSignature &&
+            wallpaperLibrarySignature(library) !== pending.wallpaperSignature
+          )
+            throw new Error('Wallpaper library changed before sync apply')
+          // 轮换进度可并发推进；素材变化必须重新捕获，不能覆盖用户刚完成的编辑。
+          if (wallpaperLibrarySignature(library) !== wallpaperLibrarySignature(current))
+            throw new Error('Wallpaper library changed during sync apply')
+          for (const variant of ['light', 'dark'] as const) {
+            const incoming = pending.snapshot.optional?.wallpapers?.[variant]
+            if (!incoming) continue
+            const group = library[variant]
+            const protectedSet = protectedIds.get(variant)!
+            const old = new Map(group.items.map((item) => [item.id, item]))
+            const incomingItems = new Map(incoming.items.map((item) => [item.id, item]))
+            for (const reference of incoming.items) {
+              if (protectedSet.has(reference.id)) continue
+              const blob = resources.get(`${variant}:${reference.id}`)
+              if (blob) await tx.objectStore(wallpaperStore(variant)).put(blob, reference.id)
+              else if (!(await tx.objectStore(wallpaperStore(variant)).get(reference.id)))
+                throw new Error('Incoming wallpaper file is missing')
+            }
+            const replacement = incoming.order
+              .filter((id) => !protectedSet.has(id))
+              .map((id) => {
+                const reference = incomingItems.get(id)!
+                return {
+                  ...(old.get(id)?.sha256 === reference.sha256 ? old.get(id) : {}),
+                  id,
+                  mediaType: 'image' as const,
+                  size: reference.size,
+                  sha256: reference.sha256,
+                  syncEligible: true,
+                  mimeType: reference.mimeType,
+                }
+              })
+            const ordered: WallpaperItem[] = []
+            let cursor = 0
+            for (const item of group.items) {
+              if (protectedSet.has(item.id)) ordered.push(item)
+              else if (cursor < replacement.length) ordered.push(replacement[cursor++]!)
+            }
+            ordered.push(...replacement.slice(cursor))
+            for (const item of group.items)
+              if (!ordered.some((value) => value.id === item.id)) {
+                await tx.objectStore(wallpaperStore(variant)).delete(item.id)
+                await tx.objectStore('wallpaperLibrary').delete(`thumbnail:${variant}:${item.id}`)
+              }
+            for (const reference of incoming.items)
+              if (old.get(reference.id)?.sha256 !== reference.sha256)
+                await tx
+                  .objectStore('wallpaperLibrary')
+                  .delete(`thumbnail:${variant}:${reference.id}`)
+            group.items = ordered
+            if (!protectedSet.has(group.fixedId))
+              group.fixedId = ordered.some((item) => item.id === incoming.fixedId)
+                ? incoming.fixedId
+                : (ordered[0]?.id ?? '')
+          }
+          await tx.objectStore('wallpaperLibrary').put(true, `applied:${pending.operationId}`)
+        })
       }
-      await idbSet(variant === 'light' ? 'wallpaper' : 'wallpaperDark', wallpaper.assetId, blob)
+      const channel = new BroadcastChannel('lemon-wallpaper-library')
+      channel.postMessage(null)
+      channel.close()
     }
     pending = { ...pending, phase: 'wallpapers' }
     await setPendingApply(pending)
   }
   if (pending.phase === 'wallpapers') {
-    // 本地壁纸会跟随页面当前的深浅色状态选择。先切换主题偏好，再写入壁纸 ID，
-    // 避免旧主题在两个存储写入之间抢先解析到错误的壁纸变体。
+    // 素材事务已提交，再恢复主题偏好和普通设置。
     if (scope.uiPreferences && pending.snapshot.ui && !pending.uiPreferencesApplied) {
       await patchUiPreferences(pending.snapshot.ui)
       pending = { ...pending, uiPreferencesApplied: true }
@@ -277,19 +353,15 @@ async function continueApply(pending: PendingApplyV1, scope: SyncScopePreference
     pending = { ...pending, phase: 'optional' }
     await setPendingApply(pending)
   }
-  for (const [variant, wallpaper] of Object.entries(pending.wallpapers ?? {}) as Array<
-    ['dark' | 'light', PendingWallpaperApplyV1]
-  >) {
-    if (wallpaper.previousId && wallpaper.previousId !== wallpaper.assetId) {
-      await idbDelete(variant === 'light' ? 'wallpaper' : 'wallpaperDark', wallpaper.previousId)
-    }
+  for (const wallpaper of Object.values(pending.wallpapers ?? {}))
     await idbDelete('webdavSync', wallpaper.temporaryKey)
-  }
   await clearPendingApply()
+  await idbDelete('wallpaperLibrary', `applied:${pending.operationId}`)
 }
 
-export type IncomingWallpaperResources = Partial<
-  Record<'dark' | 'light', { assetId: string; blob: Blob; sha256: string }>
+export type IncomingWallpaperResources = Record<
+  string,
+  { variant: WallpaperVariant; itemId: string; assetId: string; blob: Blob; sha256: string }
 >
 
 export async function prepareAndApplyBrowserSnapshot(
@@ -298,15 +370,18 @@ export async function prepareAndApplyBrowserSnapshot(
   snapshot: SyncSnapshotV1,
   scope: SyncScopePreferences,
   wallpapers?: IncomingWallpaperResources,
+  expectedWallpaperSignature?: string,
 ): Promise<void> {
   const validation = validateSyncSnapshot(snapshot)
   if (!validation.ok) throw new Error(validation.error)
-  const currentSettings = await settingsStorage.getValue()
-  const pendingWallpapers: PendingApplyV1['wallpapers'] = {}
-  for (const [variant, wallpaper] of Object.entries(wallpapers ?? {}) as Array<
-    ['dark' | 'light', NonNullable<IncomingWallpaperResources['light']>]
-  >) {
-    const reference = snapshot.optional?.wallpapers?.[variant]
+  const signature =
+    expectedWallpaperSignature ?? wallpaperLibrarySignature(await readWallpaperLibrary())
+  const resources: Array<readonly [string, Blob]> = []
+  const pendingWallpapers: Record<string, PendingWallpaperApplyV1> = {}
+  for (const [key, wallpaper] of Object.entries(wallpapers ?? {})) {
+    const reference = snapshot.optional?.wallpapers?.[wallpaper.variant]?.items.find(
+      (item) => item.id === wallpaper.itemId,
+    )
     if (
       !reference ||
       reference.assetId !== wallpaper.assetId ||
@@ -314,18 +389,15 @@ export async function prepareAndApplyBrowserSnapshot(
       reference.size !== wallpaper.blob.size ||
       reference.mimeType !== wallpaper.blob.type ||
       (await sha256Hex(await wallpaper.blob.arrayBuffer())) !== wallpaper.sha256
-    ) {
+    )
       throw new Error('Incoming wallpaper does not match the validated snapshot')
-    }
-    const temporaryKey = `pending-wallpaper-${operationId}-${variant}`
-    await idbSet('webdavSync', temporaryKey, wallpaper.blob)
-    pendingWallpapers[variant] = {
+    const temporaryKey = `pending-wallpaper-${operationId}-${key}`
+    resources.push([temporaryKey, wallpaper.blob])
+    pendingWallpapers[key] = {
+      variant: wallpaper.variant,
+      itemId: wallpaper.itemId,
       assetId: wallpaper.assetId,
       mimeType: wallpaper.blob.type,
-      previousId:
-        variant === 'light'
-          ? currentSettings.background.local.id
-          : currentSettings.background.localDark.id,
       sha256: wallpaper.sha256,
       size: wallpaper.blob.size,
       temporaryKey,
@@ -336,36 +408,43 @@ export async function prepareAndApplyBrowserSnapshot(
     operationId,
     revisionId,
     phase: 'validated',
+    wallpaperSignature: signature,
     snapshot: validation.value,
     scope: { ...scope },
     ...(Object.keys(pendingWallpapers).length ? { wallpapers: pendingWallpapers } : {}),
   }
-  await setPendingApply(pending)
+  await setPendingApply(pending, resources)
   await continueApply(pending, scope)
 }
 
 export async function getLocalWallpaperBlob(
-  variant: 'dark' | 'light',
+  variant: WallpaperVariant,
   expectedSha256: string,
 ): Promise<Blob | undefined> {
-  const blob = await getSelectedBrowserWallpaper(variant)
-  if (!blob || (await sha256Hex(await blob.arrayBuffer())) !== expectedSha256) return undefined
-  return blob
+  const library = await readWallpaperLibrary()
+  for (const item of library[variant].items) {
+    if (item.mediaType !== 'image' || (item.sha256 && item.sha256 !== expectedSha256)) continue
+    const blob = await idbGet(wallpaperStore(variant), item.id)
+    if (blob && (await sha256Hex(await blob.arrayBuffer())) === expectedSha256) return blob
+  }
+  return undefined
 }
-
-export async function getSelectedBrowserWallpaper(
-  variant: 'dark' | 'light',
-): Promise<Blob | undefined> {
-  const settings = await settingsStorage.getValue()
-  const selection = variant === 'light' ? settings.background.local : settings.background.localDark
-  if (!selection.id || selection.mediaType === 'video') return undefined
-  const blob = await idbGet(variant === 'light' ? 'wallpaper' : 'wallpaperDark', selection.id)
-  return blob instanceof Blob && blob.type.toLowerCase().startsWith('image/') ? blob : undefined
-}
-
 export async function resumePendingBrowserApply(): Promise<boolean> {
   const pending = await getPendingApply()
   if (!pending) return false
+  // 尚未提交的旧应用计划遇到本机编辑时，撤销暂存计划，交回正常三方合并。
+  // 已提交的计划必须继续依赖事务标记恢复，不能重复删除后来新增的素材。
+  if (
+    pending.phase === 'validated' &&
+    pending.wallpaperSignature &&
+    !(await idbGet('wallpaperLibrary', `applied:${pending.operationId}`)) &&
+    pending.wallpaperSignature !== wallpaperLibrarySignature(await readWallpaperLibrary())
+  ) {
+    for (const wallpaper of Object.values(pending.wallpapers ?? {}))
+      await idbDelete('webdavSync', wallpaper.temporaryKey)
+    await clearPendingApply()
+    return false
+  }
   const validation = validateSyncSnapshot(pending.snapshot)
   if (!validation.ok) throw new Error(validation.error)
   await continueApply({ ...pending, snapshot: validation.value }, pending.scope)

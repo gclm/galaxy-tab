@@ -60,6 +60,7 @@ export interface CaptureContext {
 }
 
 export interface WallpaperAvailabilityContext {
+  partial?: boolean
   failed?: boolean
   mediaType?: 'image' | 'video'
   selected: boolean
@@ -90,6 +91,8 @@ function wallpaperAvailability(
   context: AvailabilityContext,
 ): SyncAvailability {
   const wallpaper = context.wallpapers?.[variant]
+  if (wallpaper?.partial && context.scope.wallpapers)
+    return { state: 'unsupported-resource', reasonKey: 'sync.availability.wallpaperPartial' }
   if (wallpaper?.mediaType === 'video') {
     return { state: 'unsupported-resource', reasonKey: 'sync.availability.wallpaperVideo' }
   }
