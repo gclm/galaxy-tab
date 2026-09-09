@@ -4,28 +4,43 @@
 
 ## Unreleased
 
+### Breaking Changes💥
+
+- Removed the browser-dependent cloud sync feature, which could not guarantee reliable behavior; WebDAV sync is now used instead.
+
 ### New Features✨
 
-- **Page display:** Added controls for date size, double-clicking the blank background to toggle minimal mode, and keeping the clock and date visible while page elements fade when inactive.
-- **Wallpaper:** Add multiple local images or videos and rotate them randomly or in order on new tabs.
-- **Wallpaper:** Redesigned the picker with resolution details, batch removal, sorting, improved narrow-screen layouts, and faster local wallpaper loading.
-- **Wallpaper:** Added an option to show or hide the wallpaper download button, including downloads of the current local image or video.
+- **Layout:** Added a date-size control.
+- **Layout:** Added double-clicking the blank background to toggle minimal mode.
+- **Layout:** Added an option to keep the clock and date visible while page elements fade when inactive.
+- **Wallpaper:** Added support for multiple local images or videos, with random or sequential rotation on new tabs.
+- **Wallpaper:** Redesigned the wallpaper picker to support batch removal and sorting of local wallpapers.
+- **Wallpaper:** Added an option to show or hide the wallpaper download button.
+- **Wallpaper:** Added support for saving the current local image or video.
 - **Search:** Added an option to disable search suggestions.
 - **Search:** Added an option to left-align search input text.
+- **Search:** Added a Tips shortcut in the search-engine menu on the left side of the search box to open Search Preferences directly.
 - **Bookmarks:** When adding a bookmark to Quick Links, the current Quick Links group is selected by default.
+- **Bookmarks:** Added remembered width for the bookmarks sidebar.
 - **Launchpad:** Added an icon-size control.
-- **Bookmarks:** When a site has no favicon, its first title character can be used as the link icon; the bookmarks sidebar width is also remembered.
-- Added Turkish localization.
+- **Launchpad:** Added opening the Launchpad by right-clicking a blank area of the new tab page, similar to Lemon Start Page.
 - **Sync:** Added experimental WebDAV backup and sync.
 - **Settings:** Reorganized settings sections and appearance.
+- **Quick Links, Dock, and Launchpad:** When a site has no favicon, its first title character can be used as the link icon.
+  > Chromium-based browsers require icon caching to be enabled.
+- **Quick Links, Dock, Launchpad, and bookmarks sidebar:** Added support for opening links in an incognito window from the context menu.
+- Added Turkish localization.
 
 ### Improvements⚡️
 
-- Removed experimental cloud sync because it could not reliably determine which data was newest. Local settings import/export remains available, together with a temporary cleanup path for old cloud data.
 - **Search:** Added a shortcut from the search-engine menu in the search box to Search Preferences.
+- **Search:** Improved search-suggestion performance.
 - **Quick Links:** In grouped mode, changed the Top Sites context-menu label from “Pin” to “Add to Quick Links”.
+- **Quick Links:** Improved Quick Links performance.
+- **Bookmarks:** Improved bookmarks-sidebar loading and sorting performance.
+- **Bookmarks:** Improved the interaction for dragging to reorder bookmarks.
+- **Launchpad:** Fixed Top Sites icons sometimes jumping.
 - Removed third-party favicon services to reduce extra third-party requests.
-- Improved bookmark-page loading performance.
 - Clearing wallpaper or icon caches now reloads open new-tab pages and provides clearer failure hints and recovery.
 - Simplified some settings UI wording and reordered options.
 
@@ -36,6 +51,7 @@
 - Fixed Dock items jumping or appearing outside the first screen during initialization.
 - Fixed Quick Links icons occasionally showing stale icons or flickering when the URL changes.
 - Fixed incorrect clock and quote text colors in inverted-color mode.
+- Fixed the Popup menu failing to load.
 
 ## 3.5.0 (Aug 01, 2026)
 
