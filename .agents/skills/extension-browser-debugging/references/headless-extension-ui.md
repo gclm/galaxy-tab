@@ -4,15 +4,19 @@
 
 ## 前置条件
 
-仓库不自动安装 Playwright，也不下载浏览器。准备一个可 `require('playwright')` 的 Node 模块和一个浏览器可执行文件：
+仓库不自动安装 Playwright，也不下载浏览器。先调用 `load_workspace_dependencies`，使用工具返回的 Node.js executable 和 Node.js packages 路径。Codex bundled runtime 通常已经包含 Playwright，可从返回的 packages 路径下解析 `playwright`；不要把某台机器的绝对路径写入脚本或 Skill。
+
+再确认目标浏览器。优先检查项目根目录的 `web-ext.config.ts`：如果存在，读取 `binaries.chrome`、`binaries.edge` 和 `binaries.firefox`，只使用实际存在的路径。配置缺失或路径失效时，再从环境变量、系统命令或平台安装位置探测 Chrome、Edge 和 Firefox；不要把当前机器的路径复制进 Skill 或脚本。
+
+Chromium/Chrome/Edge 测试使用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE`；Firefox 测试使用 Firefox 对应的 Playwright 启动器和探测到的 Firefox executable：
 
 ```powershell
-$env:PLAYWRIGHT_MODULE = 'C:/path/to/node_modules/playwright'
-$env:PLAYWRIGHT_CHROMIUM_EXECUTABLE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
-pnpm build
+$env:PLAYWRIGHT_MODULE = Join-Path $bundledNodePackages 'playwright'
+$env:PLAYWRIGHT_CHROMIUM_EXECUTABLE = $detectedChromiumExecutable
+& $bundledNodeExecutable .agents/skills/extension-browser-debugging/examples/extension-ui-debug.mjs
 ```
 
-`PLAYWRIGHT_MODULE` 未设置时，示例会从当前项目解析 `playwright`。`PLAYWRIGHT_CHROMIUM_EXECUTABLE` 应指向实际支持加载未打包扩展的 Chromium/Edge 可执行文件。某些新版 Chrome 可能限制 `--load-extension` 参数；遇到这种情况，换用支持该参数的 Chromium/Edge。
+其中 `$bundledNodePackages`、`$bundledNodeExecutable`、`$detectedChromiumExecutable` 和 `$detectedFirefoxExecutable` 是运行时发现的值，不是固定配置。若 `PLAYWRIGHT_MODULE` 未设置，示例会从当前项目解析 `playwright`；若项目未安装，则使用 bundled runtime 的路径。某些新版 Chrome 可能限制 `--load-extension` 参数；遇到这种情况，换用支持该参数的 Chromium/Edge。
 
 ## 启动和加载
 
@@ -42,7 +46,7 @@ await page.goto(newtabUrl)
 
 ## 常见失败定位
 
-- `require('playwright')` 失败：设置 `PLAYWRIGHT_MODULE`，或确认依赖安装在当前 Node 可解析的位置。
+- `require('playwright')` 失败：确认已调用 `load_workspace_dependencies`，使用 bundled Node.js 运行，并将 `PLAYWRIGHT_MODULE` 指向返回的 Node.js packages 路径下的 `playwright`。
 - 浏览器启动失败：检查 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 的绝对路径和浏览器与 Playwright 的兼容性。
 - 没有 Service Worker：确认构建目录包含 `manifest.json`、`background.js`，且加载参数指向目录而非 zip。
 - 扩展页面打不开：打印 `worker.url()` 和 `newtabUrl`，检查 Manifest 的 `chrome_url_overrides.newtab` 及构建目标。
