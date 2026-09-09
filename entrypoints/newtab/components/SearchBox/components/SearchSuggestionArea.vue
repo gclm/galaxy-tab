@@ -88,7 +88,7 @@ function isLiveSuggestionResult(text: string) {
   return (
     settings.search.suggestionsEnabled &&
     text === latestLiveQuery.value &&
-    text === props.searchText &&
+    text === props.searchText.trim() &&
     !isShowSearchHistories.value
   )
 }
@@ -108,20 +108,43 @@ function cancelSuggestionRequest() {
   suggestionController = null
 }
 
-function handleInput() {
-  if (focusStore.isFocused && !props.searchText) {
+function handleInput(text?: string) {
+  const query = (text ?? props.searchText).trim()
+  if (focusStore.isFocused && !query) {
     // 如果搜索词为空，则显示搜索历史
     cancelSuggestionRequest()
     latestLiveQuery.value = ''
     clearSearchSuggestions()
-    showSearchHistories()
-  } else {
+    void showSearchHistories()
+  } else if (query) {
     hideSearchHistories()
-    showSuggestionsDebounced()
+    showSuggestionsDebounced(query)
   }
 }
 
-const canShowHistory = () => focusStore.isFocused && !props.searchText
+watch(
+  () => props.searchText,
+  (newText) => {
+    handleInput(newText)
+  },
+)
+
+watch(
+  () => focusStore.isFocused,
+  (isFocused) => {
+    if (isFocused) {
+      if (props.searchText.trim()) {
+        showSuggestionsDebounced(props.searchText.trim())
+      } else {
+        void showSearchHistories()
+      }
+    } else {
+      cancelSuggestionRequest()
+    }
+  },
+)
+
+const canShowHistory = () => focusStore.isFocused && !props.searchText.trim()
 
 async function showSearchHistories() {
   const requestVersion = ++historyRequestVersion
@@ -175,42 +198,36 @@ async function fetchSuggestions(
   }
 }
 
-function showSuggestionsDebounced() {
+function showSuggestionsDebounced(queryText?: string) {
   historyRequestVersion += 1
-  latestLiveQuery.value = props.searchText
+  const query = (queryText ?? props.searchText).trim()
+  latestLiveQuery.value = query
   if (!settings.search.suggestionsEnabled) {
     searchSuggestions.value = []
     clearActiveSuggest()
     return
   }
   cancelSuggestionRequest()
-  // 至少2个字符才触发搜索建议
-  if (props.searchText.length < 2) {
+  if (!query) {
     return
   }
 
   // 先检查缓存，命中则直接返回
-  const cached = searchSuggestCache.get(props.searchText)
+  const cached = searchSuggestCache.get(query)
   if (cached) {
     searchSuggestions.value = cached
     return
   }
 
-  const api = searchSuggestAPIs[settings.search.suggestionAPI]
-  if (!api) {
-    console.error('Selected search suggestion API not found')
-    searchSuggestions.value = []
-    return
-  }
+  const api = searchSuggestAPIs[settings.search.suggestionAPI] ?? searchSuggestAPIs.bing
 
-  const text = latestLiveQuery.value
   const version = ++suggestionRequestVersion
   const controller = new AbortController()
   suggestionController = controller
   suggestionTimer = setTimeout(() => {
     suggestionTimer = null
-    void fetchSuggestions(text, api.parser, version, controller.signal)
-  }, 300)
+    void fetchSuggestions(query, api.parser, version, controller.signal)
+  }, 250)
 }
 
 onUnmounted(() => {

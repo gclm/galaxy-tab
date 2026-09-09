@@ -699,7 +699,6 @@ useEventListener(
 // useResizeObserver 会在开始观察时立即触发一次，因此不需要额外的 onMounted 刷新调用
 useResizeObserver(document.documentElement, () => {
   updateMaxCols()
-  refreshDebounced()
 })
 
 watch(
