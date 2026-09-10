@@ -114,6 +114,11 @@
       "message": "Please check the console output in developer tools.",
       "title": "Failed to get Bing wallpaper"
     },
+    "extensionUpdate": {
+      "message": "A new extension version is ready. Restart your browser to finish the update.",
+      "title": "Extension update available",
+      "toast": "Restart your browser to finish the extension update"
+    },
     "faviconCacheHint": {
       "message": "Enable favicon cache in \"Other\" settings for faster icon loading",
       "title": "Tip: Favicon cache is disabled"

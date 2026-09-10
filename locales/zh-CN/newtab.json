@@ -114,6 +114,11 @@
       "message": "请检查开发者工具中的控制台提示。",
       "title": "获取 Bing 壁纸失败"
     },
+    "extensionUpdate": {
+      "message": "扩展已有新版本可用，请重启浏览器以完成更新。",
+      "title": "扩展更新可用",
+      "toast": "请重启浏览器以完成扩展更新"
+    },
     "faviconCacheHint": {
       "message": "可在「其他」设置中开启图标缓存，获得更快的图标加载速度",
       "title": "提示：图标缓存未开启"

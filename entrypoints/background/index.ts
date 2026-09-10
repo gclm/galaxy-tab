@@ -1,6 +1,11 @@
 import { defineBackground } from '#imports'
 import { browser, type Browser } from 'wxt/browser'
 
+import {
+  consumeExtensionUpdateNotice,
+  isExtensionUpdateMessage,
+  markExtensionUpdateAvailable,
+} from '@/shared/extensionUpdate'
 import { isWebDavSyncMessage, type WebDavSyncMessage } from '@/shared/webdavSync/bridge'
 import { createSyncConflictDetails } from '@/shared/webdavSync/conflictDetails'
 import { SyncCoordinator } from '@/shared/webdavSync/coordinator'
@@ -35,7 +40,33 @@ function routeWebDavMessage(handler: (message: WebDavSyncMessage) => Promise<unk
   }
 }
 
+function routeExtensionUpdateMessage(handler: () => Promise<unknown>) {
+  return (message: unknown, sender: Browser.runtime.MessageSender) => {
+    if (sender.id && sender.id !== browser.runtime.id) return undefined
+    return isExtensionUpdateMessage(message) ? handler() : undefined
+  }
+}
+
 export default defineBackground(() => {
+  let extensionUpdateTail: Promise<void> = Promise.resolve()
+  const runExtensionUpdateTask = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = extensionUpdateTail.then(task, task)
+    extensionUpdateTail = run.then(
+      () => undefined,
+      () => undefined,
+    )
+    return run
+  }
+
+  browser.runtime.onUpdateAvailable.addListener(({ version }) => {
+    void runExtensionUpdateTask(() => markExtensionUpdateAvailable(version)).catch((error) => {
+      console.warn('[ExtensionUpdate] Failed to save restart notice:', error)
+    })
+  })
+  browser.runtime.onMessage.addListener(
+    routeExtensionUpdateMessage(() => runExtensionUpdateTask(consumeExtensionUpdateNotice)),
+  )
+
   initializeBookmarkCache()
 
   let applyingRemote = false

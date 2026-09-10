@@ -114,6 +114,11 @@
       "message": "Geliştirici araçlarında konsol çıktısını kontrol edin.",
       "title": "Bing duvar kağıdı alınamadı"
     },
+    "extensionUpdate": {
+      "message": "Yeni bir uzantı sürümü hazır. Güncellemeyi tamamlamak için tarayıcınızı yeniden başlatın.",
+      "title": "Uzantı güncellemesi mevcut",
+      "toast": "Uzantı güncellemesini tamamlamak için tarayıcınızı yeniden başlatın"
+    },
     "faviconCacheHint": {
       "message": "Daha hızlı simge yüklemesi için \"Diğer\" ayarlarında favicon önbelleğini etkinleştirin",
       "title": "İpucu: Favicon önbelleği devre dışı"

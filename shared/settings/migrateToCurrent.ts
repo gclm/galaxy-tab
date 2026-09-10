@@ -1,4 +1,5 @@
 import { CURRENT_CONFIG_VERSION, type CURRENT_CONFIG_SCHEMA } from './current'
+import { migrateWallpaperLibrary } from '../wallpaperLibrary'
 import {
   migrateFromVer10To11,
   migrateFromVer7To8,
@@ -64,4 +65,28 @@ export function migrateSettingsToCurrent(settings: MigratableSettings): {
     settings: normalizeCurrentSettings(current as CURRENT_CONFIG_SCHEMA),
     migrated,
   }
+}
+
+/** 修复 WXT 元数据已前进、但配置值仍停留在旧版本的异常状态。 */
+export async function migrateSettingsToCurrentWithWallpaper(
+  settings: MigratableSettings,
+): Promise<CURRENT_CONFIG_SCHEMA> {
+  let current = settings
+
+  while (current.version < CURRENT_CONFIG_VERSION) {
+    const previousVersion = current.version
+    if (current.version === 11) {
+      await migrateWallpaperLibrary(current.background)
+    }
+    current = migrateSettingsOneVersion(current)
+    if (current.version <= previousVersion || current.version > CURRENT_CONFIG_VERSION) {
+      throw new Error(`Invalid repair migration result: ${previousVersion} -> ${current.version}`)
+    }
+  }
+
+  if (current.version !== CURRENT_CONFIG_VERSION) {
+    throw new Error(`Unexpected config version after repair: ${current.version}`)
+  }
+
+  return normalizeCurrentSettings(current as CURRENT_CONFIG_SCHEMA)
 }

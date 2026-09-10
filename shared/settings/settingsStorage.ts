@@ -1,10 +1,14 @@
-import { storage } from '#imports'
+import { browser, storage } from '#imports'
 
 import { migrateWallpaperLibrary } from '../wallpaperLibrary'
 
 import { type CURRENT_CONFIG_SCHEMA, CURRENT_CONFIG_VERSION } from './current'
 import { defaultSettings } from './default'
-import { migrateSettingsOneVersion, type MigratableSettings } from './migrateToCurrent'
+import {
+  migrateSettingsOneVersion,
+  migrateSettingsToCurrentWithWallpaper,
+  type MigratableSettings,
+} from './migrateToCurrent'
 import type {
   SettingsSchemaV10,
   SettingsSchemaV11,
@@ -45,13 +49,55 @@ const storedSettings = storage.defineItem<CURRENT_CONFIG_SCHEMA>('local:settings
   },
 })
 
+async function getCurrentSettings(): Promise<CURRENT_CONFIG_SCHEMA> {
+  // 必须先等待 WXT 自己的迁移完成，再比较配置值和元数据，避免读到迁移中的中间状态。
+  const value = await storedSettings.getValue()
+  const metadata = (await storedSettings.getMeta()) as { v?: number; [key: string]: unknown }
+  const metadataVersion = typeof metadata.v === 'number' ? metadata.v : null
+
+  if (value.version === CURRENT_CONFIG_VERSION && metadataVersion === CURRENT_CONFIG_VERSION) {
+    return value
+  }
+
+  if (value.version < CURRENT_CONFIG_VERSION) {
+    const repaired = await migrateSettingsToCurrentWithWallpaper(
+      value as unknown as MigratableSettings,
+    )
+    await browser.storage.local.set({
+      settings: repaired,
+      'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
+    })
+    return repaired
+  }
+
+  if (value.version === CURRENT_CONFIG_VERSION && metadataVersion !== CURRENT_CONFIG_VERSION) {
+    await browser.storage.local.set({
+      'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
+    })
+    return value
+  }
+
+  throw new Error(
+    `Settings version mismatch: value=${value.version}, metadata=${metadataVersion ?? 'missing'}`,
+  )
+}
+
 // WXT 会记录迁移失败后继续返回旧值；阻止调用方把未迁移的数据当作当前配置保存。
 export const settingsStorage = {
   ...storedSettings,
   async getValue() {
-    const value = await storedSettings.getValue()
-    if (value.version !== CURRENT_CONFIG_VERSION)
-      throw new Error('Settings migration did not complete')
-    return value
+    return getCurrentSettings()
+  },
+  async setValue(value: CURRENT_CONFIG_SCHEMA) {
+    if (value.version !== CURRENT_CONFIG_VERSION) {
+      throw new Error(`Cannot save settings with version ${value.version}`)
+    }
+
+    await getCurrentSettings()
+    const metadata = await storedSettings.getMeta()
+    await browser.storage.local.set({
+      settings: value,
+      'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
+    })
   },
 }

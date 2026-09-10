@@ -2,14 +2,14 @@ import { browser } from '#imports'
 
 export async function isSettingsCompatible(): Promise<boolean> {
   const storedSettings: {
-    $settings: number | null
+    'settings$': { v?: number } | null
     settings: { version: string | number | null; [key: string]: unknown }
   } = await browser.storage.local.get({
-    $settings: null,
+    'settings$': null,
     settings: { version: null },
   })
 
-  if (storedSettings.$settings && storedSettings.$settings <= 6) {
+  if (storedSettings['settings$']?.v && storedSettings['settings$'].v <= 6) {
     return false
   }
 

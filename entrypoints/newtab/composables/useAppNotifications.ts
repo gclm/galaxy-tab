@@ -4,6 +4,7 @@ import { browser } from 'wxt/browser'
 
 import { version } from '@/package.json'
 
+import { requestExtensionUpdateNotice } from '@/shared/extensionUpdate'
 import { useSettingsStore } from '@/shared/settings'
 import type { LocalSyncStateV1 } from '@/shared/webdavSync/types'
 
@@ -27,6 +28,7 @@ export function useAppNotifications(showChangelog: () => void | Promise<void>) {
 
   onMounted(async () => {
     browser.storage.onChanged.addListener(syncStateListener)
+    await showExtensionUpdateNotification(t)
     await showWebDavSyncNotification(t)
     // 全新用户欢迎通知
     if (settings.pluginVersion === '') {
@@ -64,6 +66,19 @@ export function useAppNotifications(showChangelog: () => void | Promise<void>) {
     }
   })
   onBeforeUnmount(() => browser.storage.onChanged.removeListener(syncStateListener))
+}
+
+async function showExtensionUpdateNotification(t: (key: string) => string): Promise<void> {
+  const noticeType = await requestExtensionUpdateNotice()
+  if (noticeType === 'prompt') {
+    ElNotification.warning({
+      title: t('newtab:notification.extensionUpdate.title'),
+      message: t('newtab:notification.extensionUpdate.message'),
+      duration: 10_000,
+    })
+  } else if (noticeType === 'toast') {
+    ElMessage.info(t('newtab:notification.extensionUpdate.toast'))
+  }
 }
 
 async function showWebDavSyncNotification(t: (key: string) => string): Promise<void> {
