@@ -18,11 +18,10 @@ export async function hasExactWebDavPermission(address: string): Promise<boolean
 }
 
 /** 必须由用户手势直接调用；只申请安全跳转检测和当前 WebDAV 服务器。 */
-export async function requestExactWebDavPermission(address: string): Promise<boolean> {
+export function requestExactWebDavPermission(address: string): Promise<boolean> {
   const permission = {
     permissions: ['webRequest'] as ['webRequest'],
     origins: requiredWebDavOrigins(address),
   }
-  if (await browser.permissions.contains(permission)) return true
-  return await browser.permissions.request(permission)
+  return browser.permissions.request(permission)
 }
