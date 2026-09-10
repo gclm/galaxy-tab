@@ -91,8 +91,7 @@
     },
     "deleteConfirm": "确定要删除搜索引擎「{{name}}」吗？",
     "edit": "编辑自定义搜索引擎",
-    "title": "自定义搜索引擎",
-    "fetchingFavicon": "正在后台获取图标..."
+    "title": "自定义搜索引擎"
   },
   "dock": {
     "launchpad": {
@@ -133,9 +132,6 @@
     }
   },
   "search": {
-    "enginePreference": {
-      "hide": "隐藏"
-    },
     "engineMenu": {
       "current": "当前",
       "tipPrefix": "Tip：按下",
@@ -202,7 +198,6 @@
     },
     "pin": "置顶",
     "unpin": "取消置顶",
-    "unpinMessage": "已取消置顶该链接",
-    "fetchingFavicon": "正在后台获取图标..."
+    "unpinMessage": "已取消置顶该链接"
   }
 }

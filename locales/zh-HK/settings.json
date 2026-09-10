@@ -81,7 +81,6 @@
       },
       "unknownSource": "使用來自不明來源的圖片作背景可能會危及你的裝置安全，是否繼續？"
     },
-    "youLikeFine": "你喜歡就好~",
     "library": {
       "solid": "純色背景",
       "light": "淺色模式",
@@ -204,9 +203,7 @@
     "actionBtnNote": "開啟 Dock 後，功能按鈕只能放在頂部（可在「佈局」中選擇左/右）",
     "borderRadius": "圓角",
     "launchpad": {
-      "iconSize": "圖示大小",
       "rightClickDisabledNote": "已啟用右鍵背景打開書籤欄，請先將其關閉。",
-      "rightClickToOpen": "右鍵背景打開",
       "show": "在 Dock 中啟用啟動台",
       "title": "啟動台"
     },
@@ -253,8 +250,6 @@
       "importFailed": "匯入失敗：{{reason}}",
       "importSuccess": "匯入成功",
       "importing": "正在安全套用匯入資料...",
-      "invalidFileFormat": "檔案格式不正確",
-      "invalidJSON": "無效的 JSON 格式",
       "noFileSelected": "未選擇檔案",
       "omittedIcons": "今次備份已略過 {{count}} 個過大的使用者圖示",
       "syncMode": {
@@ -270,7 +265,6 @@
       },
       "unknownError": "未知錯誤",
       "validating": "正在驗證備份完整性...",
-      "versionMismatch": "檔案內設定版本與目前擴充功能設定版本不符",
       "warningDialog": {
         "content": "匯入會覆蓋你目前的資料，請謹慎使用此功能，是否繼續？",
         "no": "取消",
@@ -323,14 +317,12 @@
       "downloadFailed": "無法讀取或下載雲端資料，請稍後再試",
       "downloadNote": "您可以下載目前的雲端資料，但該檔案無法重新匯入擴充功能。",
       "downloadStarted": "雲端資料檔案已開始下載",
-      "importIgnored": "備份中的舊雲端同步選項已忽略，雲端同步仍保持關閉",
       "message": "雲端同步有時可能以較舊的內容覆蓋目前設定。為了保護你的資料，這項功能已移除並自動關閉。目前裝置上的設定不受影響。",
       "noCloudData": "找不到需要下載的雲端資料",
       "residualMessage": "偵測到以前留下的雲端資料。你可以刪除它，目前裝置上的設定不受影響。",
       "residualTitle": "發現舊有雲端資料",
       "title": "雲端同步已停止支援"
     },
-    "syncWarning": "此功能已移除。按一下開關可查看舊有雲端資料的處理說明。",
     "title": "其他"
   },
   "perf": {
@@ -339,7 +331,6 @@
       "transparent": "功能按鈕透明"
     },
     "bgSwitchAnim": "壁紙切換動效",
-    "bgSwitchAnimTip": "關閉後切換壁紙時將不再有淡入淡出動效，能微弱提升切換速度。同時啟動時的壁紙動效也會被停用",
     "blurIntensity": "背景模糊度",
     "bookmark": {
       "blur": "書籤欄背景模糊",
@@ -700,8 +691,6 @@
       "deleteEvidenceTitle": "修復成功後刪除雲端損壞版本？",
       "download": "下載損壞的原始檔案",
       "downloaded": "原始檔案已下載",
-      "healthy": "沒有需要修復的問題",
-      "healthyDescription": "最近版本與同步狀態正常。",
       "local": "使用目前本機資料",
       "missingPayload": "損壞版本的正文已經遺失，無法下載原始檔案。你仍可使用本機資料或上一份完整版本修復。",
       "previous": "使用雲端上一份完整版本",
@@ -848,10 +837,6 @@
     "customLinesNote": "每一行為一條，行內使用「\\n」表示換行",
     "customLinesPlaceholder": "每行一條，行內使用 \\n 表示換行",
     "description": "",
-    "invertColor": {
-      "dark": "深色模式下使用深色文字",
-      "light": "淺色模式下使用深色文字"
-    },
     "normalyShowTip": "關閉後僅在搜尋框聚焦時顯示",
     "provider": "一言來源",
     "providers": {

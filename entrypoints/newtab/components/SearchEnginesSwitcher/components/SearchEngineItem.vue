@@ -151,7 +151,7 @@ function openTouchMenu(event: Event) {
             :disabled="!canHide"
             @click="canHide && emit('hide', id)"
           >
-            <span>{{ t('search.enginePreference.hide') }}</span>
+            <span>{{ t('quickLinks.hide') }}</span>
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>

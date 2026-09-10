@@ -324,7 +324,7 @@ const tagType = computed(() => (settings.theme.colorfulMode ? 'primary' : 'info'
             <el-tag :type="tagType" size="small">
               {{ t('yiyan.title') }}
             </el-tag>
-            {{ t('yiyan.invertColor.light') }}
+            {{ t('clock.invertColor.light') }}
           </span>
         </div>
         <el-switch v-model="settings.yiyan.style.invertColor.light" />
@@ -335,7 +335,7 @@ const tagType = computed(() => (settings.theme.colorfulMode ? 'primary' : 'info'
             <el-tag :type="tagType" size="small">
               {{ t('yiyan.title') }}
             </el-tag>
-            {{ t('yiyan.invertColor.dark') }}
+            {{ t('clock.invertColor.dark') }}
           </span>
         </div>
         <el-switch v-model="settings.yiyan.style.invertColor.night" />

@@ -81,7 +81,6 @@
       },
       "unknownSource": "Using images from unknown sources as backgrounds may expose your device to attacks. Do you want to continue?"
     },
-    "youLikeFine": "If you like it, that’s fine~",
     "library": {
       "solid": "Solid color",
       "light": "Light mode",
@@ -204,9 +203,7 @@
     "actionBtnNote": "When Dock is enabled, the button bar can only be placed at the top (choose left/right in Layout settings)",
     "borderRadius": "Radius",
     "launchpad": {
-      "iconSize": "Icon size",
       "rightClickDisabledNote": "Right-click to open bookmarks is enabled. Turn it off first.",
-      "rightClickToOpen": "Right click on background to open",
       "show": "Show Launchpad in Dock",
       "title": "Launchpad"
     },
@@ -253,8 +250,6 @@
       "importFailed": "Import failed: {{reason}}",
       "importSuccess": "Import successful",
       "importing": "Safely applying imported data...",
-      "invalidFileFormat": "Invalid file format",
-      "invalidJSON": "Invalid JSON format",
       "noFileSelected": "No file selected",
       "omittedIcons": "{{count}} oversized selected icons were omitted from this backup",
       "syncMode": {
@@ -270,7 +265,6 @@
       },
       "unknownError": "Unknown error",
       "validating": "Validating backup integrity...",
-      "versionMismatch": "The configuration version in the file does not match the current extension configuration version.",
       "warningDialog": {
         "content": "Importing will overwrite your current data. Please be cautious when using this feature!",
         "no": "No",
@@ -323,14 +317,12 @@
       "downloadFailed": "Cloud data could not be read or downloaded. Please try again later.",
       "downloadNote": "You can download the current cloud data, but this file cannot be imported back into the extension.",
       "downloadStarted": "The cloud data file has started downloading",
-      "importIgnored": "The old cloud sync option in the backup was ignored. Cloud sync remains off.",
       "message": "Cloud Sync could sometimes replace current settings with older data. To protect your data, this feature has been removed and turned off automatically. Settings on this device are not affected.",
       "noCloudData": "No cloud data was found to download",
       "residualMessage": "Old cloud data was found. You can delete it without affecting the current settings on this device.",
       "residualTitle": "Old cloud data found",
       "title": "Cloud Sync is no longer supported"
     },
-    "syncWarning": "This feature has been removed. Click the switch to learn how to handle old cloud data.",
     "title": "Other"
   },
   "perf": {
@@ -339,7 +331,6 @@
       "transparent": "Action buttons transparency"
     },
     "bgSwitchAnim": "Wallpaper switch animation",
-    "bgSwitchAnimTip": "When disabled, there will be no fade-in/fade-out animation when switching wallpapers, which can slightly improve switching speed. Wallpaper animation on startup will also be disabled",
     "blurIntensity": "Background blur",
     "bookmark": {
       "blur": "Bookmarks sidebar blur",
@@ -700,8 +691,6 @@
       "deleteEvidenceTitle": "Delete the damaged cloud version after repair?",
       "download": "Download damaged raw file",
       "downloaded": "Raw file downloaded",
-      "healthy": "No repair is needed",
-      "healthyDescription": "The latest version and sync state are healthy.",
       "local": "Use current local data",
       "missingPayload": "The damaged revision payload is missing and cannot be downloaded. You can still repair it using local data or the previous complete version.",
       "previous": "Use previous complete remote version",
@@ -848,10 +837,6 @@
     "customLinesNote": "Each line represents one quote. Use \"\\n\" within a line to indicate a line break.",
     "customLinesPlaceholder": "One quote per line; use \\n within a line for line breaks",
     "description": "Display a random Chinese quote below the search bar. Give it a try — you can always turn it off later!",
-    "invertColor": {
-      "dark": "Use dark text in dark mode",
-      "light": "Use dark text in light mode"
-    },
     "normalyShowTip": "When disabled, only show when the search box is focused.",
     "provider": "Provider",
     "providers": {

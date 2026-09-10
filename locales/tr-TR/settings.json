@@ -81,7 +81,6 @@
       },
       "unknownSource": "Bilinmeyen kaynaklardan alınan görselleri arka plan olarak kullanmak cihazınızı saldırılara maruz bırakabilir. Devam etmek istiyor musunuz?"
     },
-    "youLikeFine": "Beğendiyseniz, sorun yok~",
     "library": {
       "solid": "Düz renk",
       "light": "Açık tema",
@@ -204,9 +203,7 @@
     "actionBtnNote": "Dock etkinleştirildiğinde, düğme çubuğu yalnızca üste yerleştirilebilir (Düzen ayarlarında sol/sağ seçin)",
     "borderRadius": "Köşe yarıçapı",
     "launchpad": {
-      "iconSize": "Simge boyutu",
       "rightClickDisabledNote": "Yer imlerini açmak için sağ tıklama etkinleştirildi. Önce kapatın.",
-      "rightClickToOpen": "Arka plana sağ tıklayarak aç",
       "show": "Başlatıcı'yı Dock'ta Göster",
       "title": "Başlatıcı"
     },
@@ -251,11 +248,8 @@
       "import": "İçe Aktar",
       "importFailed": "İçe aktarma başarısız: {{reason}}",
       "importSuccess": "İçe aktarma başarılı",
-      "invalidFileFormat": "Geçersiz dosya biçimi",
-      "invalidJSON": "Geçersiz JSON biçimi",
       "noFileSelected": "Dosya seçilmedi",
       "unknownError": "Bilinmeyen hata",
-      "versionMismatch": "Dosyadaki yapılandırma sürümü, mevcut uzantı yapılandırma sürümüyle eşleşmiyor.",
       "warningDialog": {
         "content": "İçe aktarma, mevcut verilerinizin üzerine yazacaktır. Bu özelliği kullanırken lütfen dikkatli olun!",
         "no": "Hayır",
@@ -323,14 +317,12 @@
       "downloadFailed": "Bulut verileri okunamadı veya indirilemedi. Lütfen daha sonra tekrar deneyin.",
       "downloadNote": "Mevcut bulut verilerini indirebilirsiniz, ancak bu dosya uzantıya geri aktarılamaz.",
       "downloadStarted": "Bulut veri dosyası indirilmeye başladı",
-      "importIgnored": "Yedekteki eski bulut senkronizasyon seçeneği dikkate alınmadı. Bulut senkronizasyonu kapalı kalır.",
       "message": "Bulut Senkronizasyonu bazen mevcut ayarları eski verilerle değiştirebiliyordu. Verilerinizi korumak için bu özellik kaldırıldı ve otomatik olarak kapatıldı. Bu cihazdaki ayarlar etkilenmedi.",
       "noCloudData": "İndirilecek bulut verisi bulunamadı",
       "residualMessage": "Eski bulut verileri bulundu. Mevcut cihazdaki ayarları etkilemeden silebilirsiniz.",
       "residualTitle": "Eski bulut verileri bulundu",
       "title": "Bulut Senkronizasyonu artık desteklenmiyor"
     },
-    "syncWarning": "Bu özellik kaldırıldı. Eski bulut verilerini nasıl işleyeceğinizi öğrenmek için anahtara tıklayın.",
     "title": "Diğer"
   },
   "perf": {
@@ -339,7 +331,6 @@
       "transparent": "Eylem düğmeleri saydamlığı"
     },
     "bgSwitchAnim": "Duvar kağıdı geçiş animasyonu",
-    "bgSwitchAnimTip": "Devre dışı bırakıldığında, duvar kağıtları arasında geçiş yaparken solma/kaybolma animasyonu olmaz, bu da geçiş hızını biraz artırabilir. Başlangıçtaki duvar kağıdı animasyonu da devre dışı kalır",
     "blurIntensity": "Arka plan bulanıklığı",
     "bookmark": {
       "blur": "Yer imleri yan çubuğu bulanıklığı",
@@ -496,10 +487,6 @@
     "customLinesNote": "Her satır bir alıntıyı temsil eder. Bir satır içinde satır sonu belirtmek için \"\\n\" kullanın.",
     "customLinesPlaceholder": "Satır başına bir alıntı; satır içinde satır sonları için \\n kullanın",
     "description": "Arama çubuğunun altında rastgele bir Çin alıntısı görüntüler. Bir deneyin — isterseniz daha sonra kapatabilirsiniz!",
-    "invertColor": {
-      "dark": "Karanlık modda koyu metin kullan",
-      "light": "Aydınlık modda koyu metin kullan"
-    },
     "normalyShowTip": "Devre dışı bırakıldığında, yalnızca arama kutusu odaklandığında göster.",
     "provider": "Sağlayıcı",
     "providers": {
@@ -728,8 +715,6 @@
       "deleteEvidenceTitle": "Onarımdan sonra hasarlı bulut sürümü silinsin mi?",
       "download": "Hasarlı ham dosyayı indir",
       "downloaded": "Ham dosya indirildi",
-      "healthy": "Onarım gerekmiyor",
-      "healthyDescription": "En son sürüm ve eşitleme durumu sağlıklı.",
       "local": "Geçerli yerel verileri kullan",
       "missingPayload": "Hasarlı sürümün içeriği eksik ve indirilemiyor. Yerel verileri veya önceki eksiksiz sürümü kullanarak yine de onarabilirsiniz.",
       "previous": "Önceki eksiksiz bulut sürümünü kullan",

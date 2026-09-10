@@ -81,7 +81,6 @@
       },
       "unknownSource": "使用未知来源的图片作为背景可能会使你的设备遭到攻击，是否继续？"
     },
-    "youLikeFine": "你喜欢就好~",
     "library": {
       "solid": "纯色背景",
       "light": "浅色模式",
@@ -204,9 +203,7 @@
     "actionBtnNote": "开启 Dock 后，功能按钮只能放在顶部（可在「布局」中选择左/右）",
     "borderRadius": "圆角",
     "launchpad": {
-      "iconSize": "图标大小",
       "rightClickDisabledNote": "已启用右键背景打开书签栏，请先将其关闭。",
-      "rightClickToOpen": "右键背景打开",
       "show": "在 Dock 中启用启动台",
       "title": "启动台"
     },
@@ -253,8 +250,6 @@
       "importFailed": "导入失败：{{reason}}",
       "importSuccess": "导入成功",
       "importing": "正在安全应用导入数据...",
-      "invalidFileFormat": "文件格式不正确",
-      "invalidJSON": "无效的 JSON 格式",
       "noFileSelected": "未选择文件",
       "omittedIcons": "本次备份已跳过 {{count}} 个过大的用户图标",
       "syncMode": {
@@ -270,7 +265,6 @@
       },
       "unknownError": "未知错误",
       "validating": "正在验证备份完整性...",
-      "versionMismatch": "文件内配置版本与当前扩展配置版本不符",
       "warningDialog": {
         "content": "导入会覆盖你当前的数据，请谨慎使用该功能，是否继续？",
         "no": "不要啊",
@@ -323,14 +317,12 @@
       "downloadFailed": "无法读取或下载云端数据，请稍后重试",
       "downloadNote": "您可以下载当前的云端数据，但该文件无法被重新导入扩展。",
       "downloadStarted": "云端数据文件已开始下载",
-      "importIgnored": "备份中的旧云同步选项已忽略，云同步仍保持关闭",
       "message": "云同步有时可能用较旧的内容覆盖当前设置。为了保护你的数据，这项功能已被移除并自动关闭。当前设备上的设置不会受到影响。",
       "noCloudData": "没有找到需要下载的云端数据",
       "residualMessage": "检测到以前留下的云端数据。你可以删除它，本设备上的当前设置不会受到影响。",
       "residualTitle": "发现旧的云端数据",
       "title": "云同步已停止支持"
     },
-    "syncWarning": "此功能已移除。点击开关可查看旧云端数据的处理说明。",
     "title": "其他"
   },
   "perf": {
@@ -339,7 +331,6 @@
       "transparent": "功能按钮透明"
     },
     "bgSwitchAnim": "壁纸切换动画",
-    "bgSwitchAnimTip": "关闭后切换壁纸时将不再有淡入淡出动画，能微弱提升切换速度。同时启动时的壁纸动画也会被禁用",
     "blurIntensity": "背景模糊度",
     "bookmark": {
       "blur": "书签栏背景模糊",
@@ -700,8 +691,6 @@
       "deleteEvidenceTitle": "修复成功后删除云端损坏版本？",
       "download": "下载损坏的原始文件",
       "downloaded": "原始文件已下载",
-      "healthy": "没有发现需要修复的问题",
-      "healthyDescription": "最近版本和同步状态正常。",
       "local": "使用当前本机数据",
       "missingPayload": "损坏版本的正文已经丢失，无法下载原文件。你仍可使用本机数据或上一份完整版本修复。",
       "previous": "使用云端上一份完整版本",
@@ -848,10 +837,6 @@
     "customLinesNote": "每行为一条，行内使用「\\n」表示换行",
     "customLinesPlaceholder": "每行一条，行内使用 \\n 表示换行",
     "description": "",
-    "invertColor": {
-      "dark": "深色模式下使用深色文字",
-      "light": "浅色模式下使用深色文字"
-    },
     "normalyShowTip": "关闭后仅在搜索框聚焦时显示",
     "provider": "一言来源",
     "providers": {

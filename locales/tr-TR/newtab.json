@@ -91,8 +91,7 @@
     },
     "deleteConfirm": "“{{name}}” adlı arama motorunu silmek istediğinizden emin misiniz?",
     "edit": "Özel Arama Motorunu Düzenle",
-    "title": "Özel Arama Motoru",
-    "fetchingFavicon": "Arka planda simge alınıyor..."
+    "title": "Özel Arama Motoru"
   },
   "dock": {
     "launchpad": {
@@ -133,9 +132,6 @@
     }
   },
   "search": {
-    "enginePreference": {
-      "hide": "Gizle"
-    },
     "engineMenu": {
       "current": "Mevcut",
       "tipPrefix": "İpucu: Arama motorunu değiştirmek için",
@@ -202,7 +198,6 @@
     },
     "pin": "Sabitle",
     "unpin": "Sabitlemeyi kaldır",
-    "unpinMessage": "Bağlantının sabitlemesi kaldırıldı.",
-    "fetchingFavicon": "Arka planda simge alınıyor..."
+    "unpinMessage": "Bağlantının sabitlemesi kaldırıldı."
   }
 }

@@ -91,8 +91,7 @@
     },
     "deleteConfirm": "Are you sure you want to delete search engine \"{{name}}\"?",
     "edit": "Edit Custom Search Engine",
-    "title": "Custom Search Engine",
-    "fetchingFavicon": "Fetching icon in background..."
+    "title": "Custom Search Engine"
   },
   "dock": {
     "launchpad": {
@@ -133,9 +132,6 @@
     }
   },
   "search": {
-    "enginePreference": {
-      "hide": "Hide"
-    },
     "engineMenu": {
       "current": "Current",
       "tipPrefix": "Tip: Press",
@@ -202,7 +198,6 @@
     },
     "pin": "Pin",
     "unpin": "Unpin",
-    "unpinMessage": "Link unpinned.",
-    "fetchingFavicon": "Fetching icon in background..."
+    "unpinMessage": "Link unpinned."
   }
 }

@@ -100,7 +100,7 @@ async function submit() {
 
   if (!engine.icon) {
     ElNotification({
-      title: t('customSearchEngine.fetchingFavicon'),
+      title: t('quickLinks.fetchingFavicon'),
       message: engine.url,
       type: 'info',
     })

@@ -29,10 +29,3 @@ export function isVideoFile(file: Blob, extraTypes: string[] = []): boolean {
   const allowedTypes = new Set([...ALLOWED_VIDEO_TYPES, ...extraTypes])
   return allowedTypes.has(file.type)
 }
-
-/**
- * 检查是否为支持的媒体文件（图片或视频）
- */
-export function isMediaFile(file: Blob): boolean {
-  return isImageFile(file) || isVideoFile(file)
-}
