@@ -26,6 +26,7 @@ import {
   OPEN_BOOKMARK_EDIT_DIALOG,
   OPEN_QUICK_LINK_GROUP_SELECT_DIALOG,
 } from '@newtab/shared/keys'
+import { openUrlInIncognitoWindow } from '@newtab/shared/incognito'
 import { isHasTouchDevice, isTouchEvent } from '@newtab/shared/touch'
 import { isSafeUrl, isValidUrl } from '@newtab/shared/utils'
 
@@ -202,9 +203,9 @@ function openInNewWindow() {
   browser.windows.create({ url: props.node.url })
 }
 
-function openInIncognitoWindow() {
+async function openInIncognitoWindow() {
   if (!props.node.url || !isSafeUrl(props.node.url)) return
-  browser.windows.create({ incognito: true, url: props.node.url })
+  await openUrlInIncognitoWindow(props.node.url)
 }
 
 function copyLink() {

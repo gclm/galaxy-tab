@@ -167,6 +167,10 @@
     "openInNewTab": "在新标签页中打开",
     "openInNewWindow": "在新窗口中打开",
     "openInIncognitoWindow": "在无痕窗口中打开",
+    "incognitoPermission": {
+      "title": "需要无痕模式权限",
+      "message": "请在 Firefox 附加组件管理器中允许此扩展在隐私窗口中运行，然后重试。"
+    },
     "sections": {
       "animation": "动画",
       "appearance": "外观",

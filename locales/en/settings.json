@@ -167,6 +167,10 @@
     "openInNewTab": "Open in New Tab",
     "openInNewWindow": "Open in New Window",
     "openInIncognitoWindow": "Open in Incognito Window",
+    "incognitoPermission": {
+      "title": "Private Browsing Permission Required",
+      "message": "To open a private window, allow this extension to run in private windows in Firefox Add-ons Manager, then try again."
+    },
     "sections": {
       "animation": "Animations",
       "appearance": "Appearance",

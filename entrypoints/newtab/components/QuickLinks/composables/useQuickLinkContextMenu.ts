@@ -4,6 +4,7 @@ import { browser } from '#imports'
 
 import { useQuickLinksStore, type QuickLinkTarget } from '@/shared/quickLinks'
 
+import { openUrlInIncognitoWindow } from '@newtab/shared/incognito'
 import { isSafeUrl } from '@newtab/shared/utils'
 
 import { openQuickLinkUrl, pinQuickLink, removeQuickLink } from '../utils/quickLink'
@@ -57,9 +58,9 @@ export function useQuickLinkContextMenu(options: {
       browser.windows.create({ url: ctxItem.value.url })
   }
 
-  const ctxOpenInIncognitoWindow = (): void => {
+  const ctxOpenInIncognitoWindow = async (): Promise<void> => {
     if (ctxItem.value && isSafeUrl(ctxItem.value.url))
-      browser.windows.create({ incognito: true, url: ctxItem.value.url })
+      await openUrlInIncognitoWindow(ctxItem.value.url)
   }
 
   const ctxCopyLink = (): void => {

@@ -167,6 +167,10 @@
     "openInNewTab": "在新分頁中開啟",
     "openInNewWindow": "在新視窗中開啟",
     "openInIncognitoWindow": "在無痕視窗中開啟",
+    "incognitoPermission": {
+      "title": "需要無痕模式權限",
+      "message": "請在 Firefox 附加元件管理員中允許此擴充功能在隱私視窗中執行，然後再試一次。"
+    },
     "sections": {
       "animation": "動畫",
       "appearance": "外觀",

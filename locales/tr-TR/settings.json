@@ -167,6 +167,10 @@
     "openInNewTab": "Yeni Sekmede Aç",
     "openInNewWindow": "Yeni Pencerede Aç",
     "openInIncognitoWindow": "Gizli Pencerede Aç",
+    "incognitoPermission": {
+      "title": "Özel Gezinti İzni Gerekli",
+      "message": "Gizli pencere açmak için Firefox Eklenti Yöneticisi'nde bu uzantının özel pencerelerde çalışmasına izin verin ve tekrar deneyin."
+    },
     "sections": {
       "animation": "Animasyonlar",
       "appearance": "Görünüm",
