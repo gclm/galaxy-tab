@@ -412,7 +412,11 @@ defineExpose({ refresh, toggleLaunchpad })
           <apps24-regular />
         </div>
       </el-tooltip>
-      <div v-if="settings.dock.launchpad.enabled" class="dock-gap" :ref="setScalableRef"></div>
+      <div
+        v-if="settings.dock.launchpad.enabled && visibleQuickLinksData.length > 0"
+        class="dock-gap"
+        :ref="setScalableRef"
+      ></div>
     </template>
     <template v-for="(item, idx) in visibleQuickLinksData" :key="`pin-${idx}`">
       <el-tooltip
@@ -445,7 +449,12 @@ defineExpose({ refresh, toggleLaunchpad })
         :ref="setScalableRef"
       ></div>
     </template>
-    <template v-if="visibleQuickLinksData.length > 0 && visibleTopSites.length > 0">
+    <template
+      v-if="
+        (settings.dock.launchpad.enabled || visibleQuickLinksData.length > 0) &&
+        visibleTopSites.length > 0
+      "
+    >
       <div class="dock-gap" :ref="setScalableRef"></div>
       <div class="dock-separator"></div>
       <div class="dock-gap" :ref="setScalableRef"></div>
@@ -483,8 +492,6 @@ defineExpose({ refresh, toggleLaunchpad })
       <div class="dock-gap" :ref="setScalableRef"></div>
       <div class="dock-separator"></div>
       <div class="dock-gap" :ref="setScalableRef"></div>
-    </template>
-    <template v-if="!settings.dock.launchpad.enabled">
       <div class="dock-item" :ref="setAddBtnRef" @click="openAddQuickLink">
         <add-round />
       </div>
@@ -579,6 +586,7 @@ html.colorful .dock:not(.dock--opacity) {
   width: calc(var(--scale, 1) * var(--item-size));
   height: calc(var(--scale, 1) * var(--item-size));
   overflow: hidden;
+  text-decoration: none;
   cursor: pointer;
   background-color: var(--dock-item-background);
   border-radius: calc(var(--scale, 1) * var(--dock-item-radius));
