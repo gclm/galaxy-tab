@@ -71,7 +71,7 @@ import type {
   TombstoneV1,
   VaultMetadataV1,
 } from './types.ts'
-import { validateSyncRevision } from './validation.ts'
+import { isSyncScope, validateSyncRevision } from './validation.ts'
 import {
   probeWebDavAccess,
   requireConfiguredVaultInspection,
@@ -1090,7 +1090,11 @@ interface SetupInspection {
 }
 
 function setupScope(input: BrowserWebDavSetupInput): LocalSyncStateV1['scope'] {
-  return { ...DEFAULT_SYNC_SCOPE, ...input.scope }
+  const scope = { ...DEFAULT_SYNC_SCOPE, ...input.scope }
+  if (!isSyncScope(scope)) {
+    throw new WebDavError('invalid-response', 'At least one sync category must be enabled')
+  }
+  return scope
 }
 
 async function inspectBrowserWebDavSetup(input: BrowserWebDavSetupInput): Promise<SetupInspection> {
@@ -1195,6 +1199,7 @@ export async function connectBrowserWebDav(
     'generationId' | 'headRevisionIds' | 'localSnapshotHash' | 'state' | 'vaultId'
   >,
 ): Promise<LocalSyncStateV1> {
+  const requestedScope = setupScope(input)
   const existingState = await getOrCreateSyncState()
   if (existingState.configured) {
     throw new WebDavError(
@@ -1256,7 +1261,7 @@ export async function connectBrowserWebDav(
   const deviceName = input.deviceName?.trim().slice(0, 80) || (await createPrivateDeviceName())
   const scope = heads.length
     ? remoteScope(firstConnectionBase().scope, scanned.revisions)
-    : setupScope(input)
+    : requestedScope
   await webDavSyncConfigStorage.setValue({
     version: 1,
     connection: {

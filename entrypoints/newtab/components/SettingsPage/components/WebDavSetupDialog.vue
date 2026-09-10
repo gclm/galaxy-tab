@@ -15,6 +15,7 @@ import type {
 import { MAX_SYNC_WALLPAPER_BYTES } from '@/shared/webdavSync/catalog'
 import { DEFAULT_SYNC_SCOPE } from '@/shared/webdavSync/localState'
 import { requestExactWebDavPermission } from '@/shared/webdavSync/permissions'
+import { isSyncScope } from '@/shared/webdavSync/validation'
 import { classifyWebDavAddress, WebDavError } from '@/shared/webdavSync/webdav'
 
 const emit = defineEmits<{ connected: [] }>()
@@ -70,6 +71,7 @@ const publicHttpUnsupported = computed(
 const effectiveEncryption = computed(() =>
   preview.value?.state === 'empty' ? form.encrypted : (preview.value?.encrypted ?? form.encrypted),
 )
+const hasEnabledScope = computed(() => isSyncScope(scope))
 
 const canContinue = computed(() => {
   if (step.value === 0) {
@@ -77,6 +79,7 @@ const canContinue = computed(() => {
       form.url && form.username && form.password && addressAssessment.value && httpApproved.value,
     )
   }
+  if (step.value === 3) return hasEnabledScope.value
   if (step.value === 1) return Boolean(preview.value)
   if (step.value === 5 && effectiveEncryption.value) {
     return form.encryptionPassword.length >= 8
@@ -459,6 +462,14 @@ watch(
                 </span>
                 <el-switch v-model="scope.wallpapers" />
               </label>
+              <el-alert
+                v-if="!hasEnabledScope"
+                type="warning"
+                :closable="false"
+                show-icon
+                :title="t('webdavSync.setup.scope.required')"
+                style="grid-column: 1 / -1; margin-top: 10px"
+              />
               <el-alert
                 v-if="wallpaperInfo.oversized"
                 type="warning"

@@ -70,6 +70,7 @@
       "bingResolutionCacheFailed": "Seçilen çözünürlük önbelleğe alınamadı. Mevcut önbellek kullanılmaya devam edecek ve indirme daha sonra tekrar denenicektir.",
       "cacheDisabled": "Çevrimiçi duvar kağıdı önbelleği, \"Tüm web sitelerine erişim\" izni verilmediği için devre dışı bırakıldı.",
       "fileIsNotImage": "Seçilen dosya bir resim değil!",
+      "invalidUrl": "Geçerli bir HTTP(S) duvar kâğıdı URL'si girin.",
       "monetColorDisabled": "Monet renk çıkarma devre dışı",
       "monetDisabled": "Dinamik Tema Renkleri (Monet Çıkarma), \"Tüm sitelere erişim\" izni verilmediği için devre dışı bırakıldı.",
       "notGranted": "İzin verilmedi, bu ana bilgisayara erişilemiyor.",
@@ -824,6 +825,7 @@
       "scope": {
         "description": "Bu seçim diğer cihazlara da uygulanır.",
         "omittedResources": "Boyut sınırını aşan veya desteklenmeyen {{count}} seçili resim atlanacak",
+        "required": "En az bir eşitleme kategorisini etkinleştirin.",
         "title": "Eşitleme kapsamını seçin"
       },
       "steps": {

@@ -273,8 +273,9 @@ async function continueApply(pending: PendingApplyV1, scope: SyncScopePreference
               else if (cursor < replacement.length) ordered.push(replacement[cursor++]!)
             }
             ordered.push(...replacement.slice(cursor))
+            const orderedIds = new Set(ordered.map((item) => item.id))
             for (const item of group.items)
-              if (!ordered.some((value) => value.id === item.id)) {
+              if (!orderedIds.has(item.id)) {
                 await tx.objectStore(wallpaperStore(variant)).delete(item.id)
                 await tx.objectStore('wallpaperLibrary').delete(`thumbnail:${variant}:${item.id}`)
               }
@@ -285,7 +286,7 @@ async function continueApply(pending: PendingApplyV1, scope: SyncScopePreference
                   .delete(`thumbnail:${variant}:${reference.id}`)
             group.items = ordered
             if (!protectedSet.has(group.fixedId))
-              group.fixedId = ordered.some((item) => item.id === incoming.fixedId)
+              group.fixedId = orderedIds.has(incoming.fixedId)
                 ? incoming.fixedId
                 : (ordered[0]?.id ?? '')
           }

@@ -104,26 +104,38 @@ export default function useBackgroundSwitcher() {
       tempOnlineUrl.value = ''
       return
     }
-    // 清除已有缓存
-    await clearAllOnlineWallpaperCache()
-    const { hostname } = new URL(_url)
+    let url: URL
+    try {
+      url = new URL(_url)
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new TypeError('Unsupported URL')
+    } catch {
+      tempOnlineUrl.value = settings.background.online.url
+      ElMessage.error(i18next.t('settings:background.warning.invalidUrl'))
+      return
+    }
+    const { hostname } = url
 
     // MV2的Firefox不需要检查权限，直接设置在线壁纸URL即可。MV3才需要检查权限。
     if (import.meta.env.MANIFEST_VERSION === 2 && !settings.theme.monetColor) {
+      await clearAllOnlineWallpaperCache()
       settings.background.online.url = _url
       await offerEnableOnlineWallpaperCache(hostname)
       return
     }
 
     isShowingPermissionDialog = true
-    if (await handlePermissions(_url, hostname)) {
-      settings.background.online.url = _url
-      await offerEnableOnlineWallpaperCache(hostname)
-    } else {
-      settings.background.bgType = BgType.None
-      tempOnlineUrl.value = ''
+    try {
+      if (await handlePermissions(_url, hostname)) {
+        await clearAllOnlineWallpaperCache()
+        settings.background.online.url = _url
+        await offerEnableOnlineWallpaperCache(hostname)
+      } else {
+        settings.background.bgType = BgType.None
+        tempOnlineUrl.value = ''
+      }
+    } finally {
+      isShowingPermissionDialog = false
     }
-    isShowingPermissionDialog = false
   }
 
   tempOnlineUrl.value = settings.background.online.url

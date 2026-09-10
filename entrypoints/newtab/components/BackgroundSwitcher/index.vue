@@ -49,7 +49,7 @@ const visibleItems = computed(() =>
 )
 const thumbnails = reactive<Record<string, string>>({})
 const thumbnailHashes = new Map<string, string | undefined>()
-const thumbnailTasks = new Map<string, Promise<void>>()
+const thumbnailTasks = new Map<string, { promise: Promise<void>; version: number }>()
 const thumbnailLanes = [Promise.resolve(), Promise.resolve()]
 let thumbnailLane = 0
 let thumbnailVersion = 0
@@ -86,6 +86,8 @@ watch(
 
 function releaseThumbnails() {
   thumbnailVersion++
+  thumbnailTasks.clear()
+  thumbnailHashes.clear()
   for (const key of Object.keys(thumbnails)) {
     URL.revokeObjectURL(thumbnails[key]!)
     delete thumbnails[key]
@@ -139,9 +141,12 @@ async function loadThumbnail(group: WallpaperVariant, item: WallpaperItem) {
     }
   })
     .catch(console.error)
-    .finally(() => thumbnailTasks.delete(key))
+    .finally(() => {
+      const current = thumbnailTasks.get(key)
+      if (current?.promise === task && current.version === version) thumbnailTasks.delete(key)
+    })
   thumbnailLanes[lane] = task
-  thumbnailTasks.set(key, task)
+  thumbnailTasks.set(key, { promise: task, version })
   await task
 }
 function metadata(item: WallpaperItem) {
@@ -156,6 +161,7 @@ async function importFiles(files: File[]) {
   busy.value = true
   const group = variant.value
   const failures: string[] = []
+  let imported = false
   try {
     // 每批最多两个解码任务，提交仍按用户选择顺序。
     for (let index = 0; index < files.length; index += 2) {
@@ -184,12 +190,13 @@ async function importFiles(files: File[]) {
         }
         try {
           await addWallpaper(group, result.value.item, result.value.file, result.value.thumbnail)
+          imported = true
         } catch {
           failures.push(files[index + offset]!.name)
         }
       }
-      await local.changed()
     }
+    if (imported) await local.changed()
     if (failures.length)
       ElNotification.warning({
         title: t('background.library.importFailed', { count: failures.length }),
