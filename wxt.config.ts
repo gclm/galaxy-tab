@@ -39,10 +39,6 @@ const baseManifest = {
     'https://v2.jinrishici.com/', // 今日诗词 API
     'https://v1.hitokoto.cn/', // 一言 API
   ],
-  content_security_policy: {
-    extension_pages:
-      "script-src 'self'; object-src 'none'; img-src 'self' https: http: data: blob:; worker-src 'self'",
-  },
 }
 
 const firefoxManifest = {

@@ -57,19 +57,12 @@ function setBookmarkListener<K extends BookmarkListenerKey>(
   key: K,
   listener: NonNullable<(typeof bookmarkListeners)[K]>,
   addListener: (listener: NonNullable<(typeof bookmarkListeners)[K]>) => void,
-  errorLabel?: string,
 ) {
   if (bookmarkListeners[key]) return
   bookmarkListeners[key] = listener
   try {
     addListener(listener)
   } catch (error) {
-    if (errorLabel) {
-      console.warn(`[bookmark] ${errorLabel}:`, error)
-      delete bookmarkListeners[key]
-      return
-    }
-
     delete bookmarkListeners[key]
     throw error
   }
@@ -308,29 +301,32 @@ export const useBookmarkStore = defineStore('bookmark', () => {
       },
       (listener) => browser.bookmarks.onMoved.addListener(listener),
     )
-    setBookmarkListener(
-      'childrenReordered',
-      () => reloadBookmarks('onChildrenReordered'),
-      (listener) => browser.bookmarks.onChildrenReordered.addListener(listener),
-      'onChildrenReordered listener is unavailable in this browser',
-    )
-    setBookmarkListener(
-      'importBegan',
-      () => {
-        importingBookmarks = true
-      },
-      (listener) => browser.bookmarks.onImportBegan.addListener(listener),
-      'onImportBegan listener is unavailable in this browser',
-    )
-    setBookmarkListener(
-      'importEnded',
-      () => {
-        importingBookmarks = false
-        reloadBookmarks('onImportEnded')
-      },
-      (listener) => browser.bookmarks.onImportEnded.addListener(listener),
-      'onImportEnded listener is unavailable in this browser',
-    )
+    if (browser.bookmarks.onChildrenReordered) {
+      setBookmarkListener(
+        'childrenReordered',
+        () => reloadBookmarks('onChildrenReordered'),
+        (listener) => browser.bookmarks.onChildrenReordered.addListener(listener),
+      )
+    }
+    if (browser.bookmarks.onImportBegan) {
+      setBookmarkListener(
+        'importBegan',
+        () => {
+          importingBookmarks = true
+        },
+        (listener) => browser.bookmarks.onImportBegan.addListener(listener),
+      )
+    }
+    if (browser.bookmarks.onImportEnded) {
+      setBookmarkListener(
+        'importEnded',
+        () => {
+          importingBookmarks = false
+          reloadBookmarks('onImportEnded')
+        },
+        (listener) => browser.bookmarks.onImportEnded.addListener(listener),
+      )
+    }
   }
 
   const loadBookmarks = async (forceNative = false) => {
