@@ -18,6 +18,7 @@
   grid-template-columns: var(--settings-aside-track) minmax(0, 1fr);
   max-width: 93%;
   height: 500px;
+  max-height: 93%;
   padding: 0;
   overflow: hidden;
   background-color: var(--le-dialog-background, var(--settings-dialog-background));

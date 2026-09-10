@@ -652,6 +652,11 @@ watch(
     margin-bottom: 18px;
     border: none;
 
+    .el-collapse-item__header,
+    .el-collapse-item__wrap {
+      border: none;
+    }
+
     .el-collapse-item__header {
       margin-bottom: 8px;
     }

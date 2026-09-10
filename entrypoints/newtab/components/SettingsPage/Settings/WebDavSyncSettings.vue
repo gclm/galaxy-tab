@@ -336,7 +336,7 @@ onMounted(() => void refresh())
   gap: 14px;
   align-items: center;
   padding: 18px;
-  background: var(--settings-option-background);
+  background: var(--settings-group-active-background);
   border-radius: var(--le-radius-inner, 12px);
 
   > svg {
