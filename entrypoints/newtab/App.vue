@@ -318,7 +318,8 @@ function toggleMinimalMode() {
         "
         v-show="!minimalMode"
         @refresh-background="BackgroundRef?.refreshBackground"
-      ></refresh-bg-btn>
+      >
+      </refresh-bg-btn>
       <download-bg-btn
         v-if="
           settings.background.showDownloadBtn &&
@@ -327,7 +328,8 @@ function toggleMinimalMode() {
           )
         "
         v-show="!minimalMode"
-      ></download-bg-btn>
+      >
+      </download-bg-btn>
     </div>
     <settings-page v-if="settingsPageMounted" v-model="settingsPageVisible" />
     <changelog v-if="changelogMounted" v-model="changelogVisible" />
