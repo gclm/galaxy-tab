@@ -33,25 +33,25 @@
 
 ### Improvements⚡️
 
-- **Search:** Added a shortcut from the search-engine menu in the search box to Search Preferences.
 - **Search:** Improved search-suggestion performance.
 - **Quick Links:** In grouped mode, changed the Top Sites context-menu label from “Pin” to “Add to Quick Links”.
 - **Quick Links:** Improved Quick Links performance.
 - **Bookmarks:** Improved bookmarks-sidebar loading and sorting performance.
 - **Bookmarks:** Improved the interaction for dragging to reorder bookmarks.
-- **Launchpad:** Fixed Top Sites icons sometimes jumping.
 - Removed third-party favicon services to reduce extra third-party requests.
 - Clearing wallpaper or icon caches now reloads open new-tab pages and provides clearer failure hints and recovery.
 - Simplified some settings UI wording and reordered options.
 
 ### Bug Fixes🐛
 
+- Fixed Top Sites icons sometimes jumping.
 - Fixed a failed local-wallpaper write potentially deleting the current wallpaper.
 - Fixed incomplete bookmark-search results caused by stale search caches.
 - Fixed Dock items jumping or appearing outside the first screen during initialization.
 - Fixed Quick Links icons occasionally showing stale icons or flickering when the URL changes.
 - Fixed incorrect clock and quote text colors in inverted-color mode.
 - Fixed the Popup menu failing to load.
+- Fixed Quick Links icons jumping during pagination at certain page widths, and prevented titles from the previous or next pages from being visible.
 
 ## 3.5.0 (Aug 01, 2026)
 

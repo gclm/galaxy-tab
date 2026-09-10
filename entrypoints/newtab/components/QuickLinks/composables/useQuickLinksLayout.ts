@@ -30,10 +30,15 @@ export function usePagedGridLayout() {
     const containerWidth = windowWidth.value * 0.85
     const marginH = settings.quickLinks.spacing.itemGapX
     const unitWidth = getItemWidth() + marginH
-    let extra = 40 // 预留padding空间
+    // magic number：加大避空，把前一页或后一页的padding空间也算上
+    // 避免前一页或后一页的标题露出来，
+    // 还避免了快到极限位置时翻页后图标跳动
+    // 预留padding空间，原始为40，加到到65
+    let extra = 65
     if (!isOnlyTouchDevice.value && settings.quickLinks.paging) {
-      // 多页模式下预留分页按钮和间距空间
-      extra += 80
+      // 多页模式下预留分页按钮和间距空间：
+      // 原始为80，加到到105
+      extra += 105
     }
 
     // 假设有 n 列，则总宽度为 n * unitWidth - marginH + extra
