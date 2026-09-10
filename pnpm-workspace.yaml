@@ -9,9 +9,6 @@ overrides:
   'ini': '^7.0.0'
   # 'config-chain>ini': '^7.0.0' # 修复 CVE-2020-7788
   'global-modules>global-prefix': '^4.0.0'
-  # 'global-prefix>ini': '^7.0.0' # 修复 CVE-2020-7788
-  # 'global-directory>ini': '^7.0.0' # 统一版本
-  # 'firefox-profile>ini': '^7.0.0' # 统一版本
   'package-json>registry-url': '^7.2.0' # 删除了 rc 依赖，rc 依赖旧版本 ini
   # -----
   # 以下是为了修复 CVE-2021-3807
