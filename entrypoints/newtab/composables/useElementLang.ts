@@ -3,44 +3,42 @@ import i18next from 'i18next'
 
 import { getLang } from '@/shared/i18n'
 
-const elementZhLocales = import.meta.glob<{ default: Language }>(
-  '/node_modules/element-plus/es/locale/lang/zh*.mjs',
+const elementLocales = import.meta.glob<{ default: Language }>(
+  '/node_modules/element-plus/es/locale/lang/*.mjs',
 )
 
-// 由于考虑面向用户群体，只包含中文、英文
-async function loadElementLocale(): Promise<Language> {
-  const formattedLocale = getLang().toLowerCase()
-  const loader =
-    elementZhLocales[`/node_modules/element-plus/es/locale/lang/${formattedLocale}.mjs`]
+async function loadElementLocale(lng: string): Promise<Language> {
+  const normalizedLocale = lng.toLowerCase().replaceAll('_', '-')
+  const localeNames = [normalizedLocale, normalizedLocale.split('-')[0], 'en']
 
-  if (loader) {
-    return (await loader()).default
+  for (const localeName of localeNames) {
+    const loader =
+      elementLocales[`/node_modules/element-plus/es/locale/lang/${localeName}.mjs`]
+    if (loader) return (await loader()).default
   }
 
-  // 当遇到不支持的 zh 语言时，回退到 zh-cn
-  return (await import('element-plus/es/locale/lang/zh-cn.mjs')).default
+  throw new Error(`Element Plus locale not found: ${lng}`)
 }
 
 const elLocale = shallowRef<Language>()
 
 export function useElementLang() {
-  onBeforeMount(async () => {
-    if (getLang().startsWith('zh')) {
-      elLocale.value = await loadElementLocale()
-    }
-  })
-
-  // 在语言切换时同步 Element Plus 语言包（仅中文按需加载，英文使用默认）
+  let languageVersion = 0
+  // 在语言切换时同步 Element Plus 语言包；不支持的区域变体回退到基础语言或英文。
   const onLngChanged = async (lng: string) => {
-    if (lng?.startsWith('zh')) {
-      elLocale.value = await loadElementLocale()
-    } else {
-      elLocale.value = undefined
+    const version = ++languageVersion
+    try {
+      const locale = await loadElementLocale(lng)
+      if (version === languageVersion) elLocale.value = locale
+    } catch (error) {
+      console.error('[i18n] Failed to load component language:', error)
     }
   }
+  onBeforeMount(() => onLngChanged(getLang()))
   i18next.on('languageChanged', onLngChanged)
 
   onUnmounted(() => {
+    languageVersion++
     i18next.off('languageChanged', onLngChanged)
   })
 

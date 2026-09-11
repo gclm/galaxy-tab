@@ -1,9 +1,8 @@
 import type { App } from 'vue'
 
-import i18next from 'i18next'
+import i18next, { type BackendModule } from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import I18NextVue from 'i18next-vue'
-import resources from 'virtual:i18next-loader'
 
 import { browser } from 'wxt/browser'
 
@@ -31,12 +30,32 @@ const languageDetector = new LanguageDetector(null, {
   caches: ['localStorage'],
 })
 
+const resources = import.meta.glob<Record<string, unknown>>('/locales/*/*.json', {
+  import: 'default',
+})
+
+// 交给 i18next 等待当前语言及回退资源，语言切换完成前不发布新语言。
+const resourceBackend: BackendModule = {
+  type: 'backend',
+  init() {},
+  read(language, namespace, callback) {
+    const load = resources[`/locales/${language}/${namespace}.json`]
+    if (!load) {
+      callback(null, {})
+      return
+    }
+    void load().then(
+      (resource) => callback(null, resource),
+      (error: Error) => callback(error, false),
+    )
+  },
+}
+
 export async function initI18n() {
   const uiPreferences = await getUiPreferences()
   // 检测用户语言
   // 参考: https://github.com/i18next/i18next-browser-languageDetector
-  await i18next.use(languageDetector).init({
-    resources,
+  await i18next.use(languageDetector).use(resourceBackend).init({
     lng: uiPreferences.language,
     fallbackLng: {
       'zh-MO': ['zh-HK'],
@@ -45,7 +64,7 @@ export async function initI18n() {
     },
     load: 'currentOnly',
     nonExplicitSupportedLngs: true,
-    ns: ['newtab', 'settings', 'faq'],
+    ns: ['newtab', 'settings', 'faq', 'popup'],
     defaultNS: 'newtab',
     debug: import.meta.env.DEV,
     interpolation: {
