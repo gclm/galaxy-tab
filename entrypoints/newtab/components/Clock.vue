@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import '@newtab/styles/clock.scss'
-import { useDocumentVisibility, useTimeoutFn } from '@vueuse/core'
+import { useDocumentVisibility } from '@vueuse/core'
 
 import dayjs from 'dayjs/esm'
 import { useTranslation } from 'i18next-vue'
@@ -9,20 +9,28 @@ import { ClockWeight } from '@/shared/enums'
 import { isChinese } from '@/shared/i18n'
 import { useSettingsStore } from '@/shared/settings'
 
-const { t, i18next } = useTranslation('newtab')
+import { dayjsLanguage, ensureLunarPlugin } from '@newtab/shared/dayjs'
+
+const { t } = useTranslation('newtab')
 const settings = useSettingsStore()
+const lunarReady = ref(false)
+const showLunar = computed(
+  () => settings.clock.showDate && settings.clock.showLunar && isChinese.value,
+)
 
-const currentLang = ref(i18next.language)
-
-const onLngChanged = (lng: string) => {
-  useTimeoutFn(() => {
-    currentLang.value = lng
-  }, 100)
-}
-i18next.on('languageChanged', onLngChanged)
-onUnmounted(() => {
-  i18next.off('languageChanged', onLngChanged)
-})
+watch(
+  showLunar,
+  async (enabled) => {
+    if (!enabled || lunarReady.value) return
+    try {
+      await ensureLunarPlugin()
+      lunarReady.value = true
+    } catch (error) {
+      console.error('[clock] Failed to load lunar calendar:', error)
+    }
+  },
+  { immediate: true },
+)
 
 function customMeridiem(hours: number) {
   if (hours < 2) return t('time.lateNight')
@@ -65,7 +73,7 @@ onUnmounted(() => {
 })
 
 const formattedTime = computed(() => {
-  void currentLang.value // 作为响应式依赖，确保语言切换时重新计算
+  void dayjsLanguage.value // 日期语言加载完成后重新格式化。
   const now = dayjs(timeNow.value)
   return {
     hour: now.format('HH'),
@@ -79,13 +87,13 @@ const formattedTime = computed(() => {
 const currentMinute = computed(() => Math.floor(timeNow.value.getTime() / 60_000))
 
 const formattedDate = computed(() => {
-  void currentLang.value // 作为响应式依赖，确保语言切换时重新计算
+  void dayjsLanguage.value
   const now = dayjs(currentMinute.value * 60_000)
   return {
     meridiemZH: customMeridiem(now.hour()),
     weekday: now.format('dddd'),
     date: now.format('LL'),
-    lunar: now.format('LMLD'),
+    lunar: showLunar.value && lunarReady.value ? now.format('LMLD') : '',
   }
 })
 
@@ -182,7 +190,7 @@ const dateStyle = computed(() => {
         {{ formattedDate.date }}
         {{ formattedDate.weekday }}
       </span>
-      <span v-if="settings.clock.showLunar && isChinese">{{ ` ${formattedDate.lunar}` }}</span>
+      <span v-if="showLunar && lunarReady">{{ ` ${formattedDate.lunar}` }}</span>
     </div>
   </div>
 </template>

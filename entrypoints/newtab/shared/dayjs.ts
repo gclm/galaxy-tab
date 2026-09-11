@@ -1,4 +1,3 @@
-import { PluginLunar } from 'dayjs-plugin-lunar'
 import type { PluginFunc } from 'dayjs/esm'
 import dayjs from 'dayjs/esm'
 import localizedFormat from 'dayjs/esm/plugin/localizedFormat'
@@ -11,9 +10,24 @@ const dayjsLocales = import.meta.glob('/node_modules/dayjs/esm/locale/zh*.js', {
 }) as Record<string, () => Promise<{ default: ILocale }>>
 
 dayjs.extend(localizedFormat)
-dayjs.extend(PluginLunar as PluginFunc<{ traditional?: boolean }>)
+
+let lunarTask: Promise<void> | undefined
+let languageVersion = 0
+export const dayjsLanguage = ref('')
+
+export function ensureLunarPlugin(): Promise<void> {
+  return (lunarTask ??= import('dayjs-plugin-lunar')
+    .then(({ PluginLunar }) => {
+      dayjs.extend(PluginLunar as PluginFunc<{ traditional?: boolean }>)
+    })
+    .catch((error) => {
+      lunarTask = undefined
+      throw error
+    }))
+}
 
 const changeLanguage = async (lng: string) => {
+  const version = ++languageVersion
   const language = lng.toLowerCase()
   let mod: { default?: ILocale } | undefined
   if (lng?.startsWith('zh')) {
@@ -21,6 +35,7 @@ const changeLanguage = async (lng: string) => {
     const fallback = dayjsLocales['/node_modules/dayjs/esm/locale/zh-cn.js']
     mod = await (loader || fallback)?.()
   }
+  if (version !== languageVersion) return
   const localeData = mod?.default
   if (localeData?.name) {
     dayjs.locale(localeData.name, localeData, true)
@@ -29,6 +44,13 @@ const changeLanguage = async (lng: string) => {
     // 使用已加载语言时不再需要两次设置 locale
     dayjs.locale('en')
   }
+  dayjsLanguage.value = lng
+}
+
+const onLanguageChanged = (lng: string) => {
+  void changeLanguage(lng).catch((error) => {
+    console.error('[clock] Failed to load date language:', error)
+  })
 }
 
 export const initDayjs = async () => {
@@ -36,5 +58,6 @@ export const initDayjs = async () => {
   await changeLanguage(lang)
 
   // 当语言切换时，同步 dayjs 语言
-  i18next.on('languageChanged', changeLanguage)
+  i18next.off('languageChanged', onLanguageChanged)
+  i18next.on('languageChanged', onLanguageChanged)
 }
