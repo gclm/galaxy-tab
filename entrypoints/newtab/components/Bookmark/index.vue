@@ -38,15 +38,10 @@ import {
 } from './composables/useBookmarkDnd'
 import {
   BOOKMARK_ROW_HEIGHT,
+  createBookmarkExpandedSets,
   flattenVisibleBookmarkTree,
   getBookmarkVirtualRange,
 } from './virtualTree'
-
-function snapshotActiveMap(map: Record<number, string[]>) {
-  return Object.fromEntries(
-    Object.entries(toRaw(map)).map(([depth, ids]) => [depth, [...toRaw(ids)]]),
-  ) as Record<number, string[]>
-}
 
 const opened = defineModel<boolean>({ required: true })
 const { isComposing: isImeComposing } = useImeAwareDialog()
@@ -63,11 +58,6 @@ const perf = usePerfClasses(() => ({
 const bookmarkPerfClass = perf('bookmark')
 const bookmarkMenuPopperClass = perf('bookmark__menu-popper')
 
-provideBookmarkItemContext({
-  popperClass: bookmarkMenuPopperClass,
-  quickLinksGrouping: computed(() => settings.quickLinks.grouping),
-})
-
 const store = useBookmarkStore()
 store._setSortMode(settings.bookmark.defaultSortMode)
 
@@ -78,8 +68,8 @@ const animateTreeChanges = ref(false)
 let treeAnimationTimer: ReturnType<typeof setTimeout> | null = null
 const draggedNodeId = ref<string | null>(null)
 const dropPreview = ref<BookmarkDropPreview | null>(null)
-// 本地拖拽会异步刷新 worker 结果；等刷新结果抵达后再恢复，避免被默认展开路径覆盖。
-const activeMapSnapshotForNextRefresh = ref<Record<number, string[]> | null>(null)
+// 一次移动可能收到多次原生/Worker 刷新；同一浏览上下文中保留用户当前视图。
+let preserveMoveView = false
 
 provide(
   OPEN_BOOKMARK_EDIT_DIALOG,
@@ -111,7 +101,7 @@ function handleDrawerClosed() {
   if (opened.value) return
 
   activeMap.value = {}
-  activeMapSnapshotForNextRefresh.value = null
+  preserveMoveView = false
   draggedNodeId.value = null
   dropPreview.value = null
   searchQuery.value = ''
@@ -186,6 +176,12 @@ const sortOptions = [
 // 控制不同深度层级的激活值（按深度索引），避免父子 collapse 共享同一数组导致冲突
 const activeMap = ref<Record<number, string[]>>({})
 provide(BOOKMARK_ACTIVE_MAP, activeMap)
+const expandedSets = computed(() => createBookmarkExpandedSets(activeMap.value))
+provideBookmarkItemContext({
+  popperClass: bookmarkMenuPopperClass,
+  quickLinksGrouping: computed(() => settings.quickLinks.grouping),
+  expandedSets,
+})
 
 watch(
   activeMap,
@@ -208,7 +204,7 @@ const { height: virtualViewportHeight } = useElementSize(virtualViewportRef, {
   height: 600,
 })
 const virtualRows = computed(() =>
-  flattenVisibleBookmarkTree(store.filteredResult, activeMap.value),
+  flattenVisibleBookmarkTree(store.filteredResult, expandedSets.value),
 )
 const virtualRange = computed(() =>
   getBookmarkVirtualRange(
@@ -255,14 +251,15 @@ const openedMenuCloseFn = ref<(() => void) | null>(null)
 provide(BOOKMARK_OPENED_MENU_CLOSE_FN, openedMenuCloseFn)
 
 watch(
+  [searchQuery, () => store.sortMode],
+  () => { preserveMoveView = false },
+  { flush: 'sync' },
+)
+
+watch(
   () => store.firstMatchPath,
   (path) => {
-    const activeMapSnapshot = activeMapSnapshotForNextRefresh.value
-    if (activeMapSnapshot) {
-      activeMap.value = activeMapSnapshot
-      activeMapSnapshotForNextRefresh.value = null
-      return
-    }
+    if (preserveMoveView) return
 
     resetVirtualScroll()
     if (searchQuery.value.trim() === '' && path.length === 0) {
@@ -339,8 +336,7 @@ async function handleBookmarkDragEnd(event: DragEndEvent) {
   }
 
   const drop = event.suspend()
-  const expandedSnapshot = snapshotActiveMap(activeMap.value)
-  activeMapSnapshotForNextRefresh.value = expandedSnapshot
+  preserveMoveView = true
   try {
     await store.moveBookmark(source.id, destination)
   } catch (error) {
@@ -349,7 +345,6 @@ async function handleBookmarkDragEnd(event: DragEndEvent) {
       title: t('bookmark.moveError'),
       message: (error as Error).message || 'Unknown error.',
     })
-    activeMapSnapshotForNextRefresh.value = expandedSnapshot
     await store.loadBookmarks(true)
   } finally {
     await nextTick()

@@ -17,9 +17,15 @@ export interface VirtualRange {
   totalHeight: number
 }
 
+export function createBookmarkExpandedSets(activeMap: Readonly<Record<number, readonly string[]>>) {
+  return Object.fromEntries(
+    Object.entries(activeMap).map(([depth, ids]) => [depth, new Set(ids)]),
+  ) as Record<number, ReadonlySet<string>>
+}
+
 export function flattenVisibleBookmarkTree(
   nodes: BookmarkTreeNode[],
-  activeMap: Readonly<Record<number, readonly string[]>>,
+  expandedSets: Readonly<Record<number, ReadonlySet<string>>>,
 ): VirtualBookmarkRow[] {
   const rows: VirtualBookmarkRow[] = []
   const stack: Array<{ node: BookmarkTreeNode; depth: number }> = []
@@ -32,7 +38,7 @@ export function flattenVisibleBookmarkTree(
     const { node, depth } = stack.pop()!
     rows.push({ node, depth, index: rows.length })
 
-    if (!node.children?.length || !activeMap[depth]?.includes(node.id)) continue
+    if (!node.children?.length || !expandedSets[depth]?.has(node.id)) continue
     for (let i = node.children.length - 1; i >= 0; i--) {
       stack.push({ node: node.children[i]!, depth: depth + 1 })
     }

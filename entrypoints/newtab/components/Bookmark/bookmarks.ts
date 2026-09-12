@@ -9,6 +9,7 @@ import { SortMode } from '@/shared/enums'
 import { createExtensionWorker } from '@/shared/worker'
 
 import bookmarkWorkerUrl from './bookmark.worker?worker&url'
+import type { BookmarkResultNode } from './bookmark.worker'
 
 let worker: Worker | null = null
 let languageChangedListener: ((lang: string) => void) | null = null
@@ -26,7 +27,7 @@ const bookmarkListeners: {
   changed?: (
     id: string,
     changeInfo: {
-      title: string
+      title?: string
       url?: string | undefined
     },
   ) => void
@@ -46,7 +47,6 @@ const bookmarkListeners: {
 
 type BookmarkListenerKey = keyof typeof bookmarkListeners
 
-const suppressedMoveReloadIds = new Set<string>()
 let importingBookmarks = false
 type BookmarkTreeNode = Browser.bookmarks.BookmarkTreeNode
 let bookmarkNodeIndex = new Map<string, BookmarkTreeNode>()
@@ -85,40 +85,6 @@ function unsetBookmarkListener<K extends BookmarkListenerKey>(
   delete bookmarkListeners[key]
 }
 
-function cloneBookmarkTree(nodes: BookmarkTreeNode[]): BookmarkTreeNode[] {
-  return nodes.map((node) => ({
-    ...node,
-    children: node.children ? cloneBookmarkTree(node.children) : undefined,
-  }))
-}
-
-function updateSiblingIndexes(nodes: BookmarkTreeNode[]) {
-  for (let index = 0; index < nodes.length; index++) {
-    nodes[index]!.index = index
-  }
-}
-
-function findBookmarkLocation(
-  nodes: BookmarkTreeNode[],
-  id: string,
-): { node: BookmarkTreeNode; siblings: BookmarkTreeNode[]; index: number } | null {
-  for (let index = 0; index < nodes.length; index++) {
-    const node = nodes[index]!
-    if (node.id === id) return { node, siblings: nodes, index }
-
-    if (node.children) {
-      const matched = findBookmarkLocation(node.children, id)
-      if (matched) return matched
-    }
-  }
-  return null
-}
-
-function findBookmarkChildren(nodes: BookmarkTreeNode[], parentId: string) {
-  const parent = findBookmarkLocation(nodes, parentId)?.node
-  return parent?.children ?? null
-}
-
 function hasBookmarkContent(nodes: BookmarkTreeNode[]) {
   return nodes.some((node) => Boolean(node.url) || Boolean(node.children?.length))
 }
@@ -150,6 +116,34 @@ export const useBookmarkStore = defineStore('bookmark', () => {
   // 首个匹配路径（按照排序/展示顺序），空数组表示无匹配
   const firstMatchPath = ref<string[]>([])
   let latestLoadRequest = 0
+  let loadTask: Promise<void> | null = null
+  let reloadRequested = false
+  let hasNativeSnapshot = false
+  let treeVersion = 0
+  let latestWorkerRequest = 0
+  const pendingMoves = new Set<{ id: string; receivedEvent: boolean }>()
+
+  const applyFirstMatchPath = (path: string[], force = false) => {
+    if (
+      force ||
+      path.length !== firstMatchPath.value.length ||
+      path.some((id, index) => id !== firstMatchPath.value[index])
+    ) {
+      firstMatchPath.value = path
+    }
+  }
+
+  const showNativeTree = () => {
+    filteredResult.value = tree.value
+    if (!searchQuery.value.trim() && sortMode.value === SortMode.Original) {
+      // 与 Worker 的原始视图规则一致；回包无需再次改变展开路径。
+      const firstFolder = tree.value.find((node) => node.children?.length)
+      applyFirstMatchPath(firstFolder ? [firstFolder.id] : [])
+    } else {
+      // 查询/排序期间仍保留原生树先行展示的容错路径。
+      firstMatchPath.value = []
+    }
+  }
 
   // 根据 `searchQuery` 过滤后的树。如果查询为空则返回完整的排序树。
   const filteredTree = computed(() => filteredResult.value)
@@ -187,6 +181,7 @@ export const useBookmarkStore = defineStore('bookmark', () => {
 
   const postWorkerInit = (nodes: BookmarkTreeNode[]) => {
     if (!worker) return
+    treeVersion++
     if (!workerReady) {
       pendingWorkerInit = nodes
       return
@@ -196,21 +191,42 @@ export const useBookmarkStore = defineStore('bookmark', () => {
       type: 'INIT',
       payload: {
         tree: nodes,
-        language: i18next.language,
-        sortMode: sortMode.value,
+        ...workerQuery(),
       },
     })
   }
+
+  const workerQuery = () => ({
+    version: treeVersion,
+    requestId: ++latestWorkerRequest,
+    query: searchQuery.value,
+    sortMode: sortMode.value,
+    language: i18next.language,
+  })
+
+  const postWorkerPatch = (id: string, changes: { title?: string; url?: string }) => {
+    if (!workerReady) {
+      postWorkerInit(tree.value)
+      return
+    }
+    const baseVersion = treeVersion++
+    worker?.postMessage({ type: 'PATCH', payload: { id, changes, baseVersion, ...workerQuery() } })
+  }
+
+  const materializeResult = (nodes: BookmarkResultNode[]): BookmarkTreeNode[] =>
+    nodes.map(({ id, children }) => {
+      const node = getBookmarkNode(id)
+      if (!node) throw new Error(`Unknown bookmark result: ${id}`)
+      if (!node.children && !children) return node
+      const { children: _children, ...fields } = node
+      return children ? { ...fields, children: materializeResult(children) } : fields
+    })
 
   const postWorkerFilter = () => {
     if (!workerReady) return
     worker?.postMessage({
       type: 'FILTER',
-      payload: {
-        query: searchQuery.value,
-        sortMode: sortMode.value,
-        language: i18next.language,
-      },
+      payload: workerQuery(),
     })
   }
 
@@ -220,20 +236,14 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     workerReady = false
     worker = createExtensionWorker(bookmarkWorkerUrl)
     if (!languageChangedListener) {
-      languageChangedListener = (lang) => {
-        worker?.postMessage({
-          type: 'UPDATE_SETTINGS',
-          payload: {
-            language: lang,
-          },
-        })
+      languageChangedListener = () => {
         triggerFilter()
       }
       i18next.on('languageChanged', languageChangedListener)
     }
 
     worker.onmessage = (e) => {
-      const { type, filteredResult: result, firstMatchPath: path } = e.data
+      const { type, nodes, firstMatchPath: path, version, requestId } = e.data
       if (type === 'READY') {
         workerReady = true
         const nodes = pendingWorkerInit
@@ -252,12 +262,21 @@ export const useBookmarkStore = defineStore('bookmark', () => {
         return
       }
 
-      if (type === 'INIT_DONE' || type === 'FILTER_DONE') {
-        if (Array.isArray(result)) filteredResult.value = result
-        firstMatchPath.value = path
-        if (type === 'INIT_DONE') {
+      if (version !== treeVersion) return
+      if (type === 'RESYNC_REQUIRED') {
+        postWorkerInit(tree.value)
+        return
+      }
+      if (requestId !== latestWorkerRequest) return
+      if (type === 'INIT_DONE' || type === 'FILTER_DONE' || type === 'PATCH_DONE') {
+        try {
+          filteredResult.value = nodes === null ? tree.value : materializeResult(nodes)
+          // 显式查询/排序即使匹配路径相同，也必须保留原来的视图重置语义。
+          applyFirstMatchPath(path, type === 'FILTER_DONE')
           loaded.value = true
-          if (searchQuery.value) postWorkerFilter()
+        } catch (error) {
+          console.warn('[bookmark] Invalid worker result:', error)
+          reloadBookmarks('worker result')
         }
       }
     }
@@ -290,14 +309,41 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     )
     setBookmarkListener(
       'changed',
-      () => reloadBookmarks('onChanged'),
+      (id, changeInfo) => {
+        const node = getBookmarkNode(id)
+        const fields = Object.keys(changeInfo)
+        if (
+          !(import.meta.env.CHROME || import.meta.env.EDGE) ||
+          !hasNativeSnapshot ||
+          loadTask ||
+          importingBookmarks ||
+          !node ||
+          !fields.length ||
+          fields.some((key) => key !== 'title' && key !== 'url') ||
+          ('title' in changeInfo && typeof changeInfo.title !== 'string') ||
+          ('url' in changeInfo && (typeof changeInfo.url !== 'string' || !node.url))
+        ) {
+          reloadBookmarks('onChanged')
+          return
+        }
+        Object.assign(node, changeInfo)
+        triggerRef(tree)
+        showNativeTree()
+        postWorkerPatch(id, changeInfo)
+      },
       (listener) => browser.bookmarks.onChanged.addListener(listener),
     )
     setBookmarkListener(
       'moved',
       (id) => {
-        if (suppressedMoveReloadIds.delete(id)) return
-        reloadBookmarks('onMoved')
+        let deferred = false
+        for (const move of pendingMoves) {
+          if (move.id !== id) continue
+          move.receivedEvent = true
+          deferred = true
+        }
+        // 同一节点在移动完成前的事件由完成后的原生快照覆盖，不推断事件内容。
+        if (!deferred) reloadBookmarks('onMoved')
       },
       (listener) => browser.bookmarks.onMoved.addListener(listener),
     )
@@ -329,7 +375,7 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     }
   }
 
-  const loadBookmarks = async (forceNative = false) => {
+  const readBookmarks = async (forceNative: boolean) => {
     const request = ++latestLoadRequest
     const cachedTree = forceNative ? null : await getCachedBookmarkTree()
     const useCachedTree = cachedTree !== null && hasBookmarkContent(cachedTree)
@@ -337,70 +383,69 @@ export const useBookmarkStore = defineStore('bookmark', () => {
       useCachedTree && cachedTree
         ? cachedTree
         : ((await browser.bookmarks.getTree())[0]?.children ?? [])
-    if (request !== latestLoadRequest) return
+    if (request !== latestLoadRequest || reloadRequested) return
 
     tree.value = children
+    hasNativeSnapshot = !useCachedTree
     buildBookmarkNodeIndex(children)
     ensureBookmarkListeners()
 
     if (!hasBookmarkContent(children)) {
-      filteredResult.value = []
-      firstMatchPath.value = []
+      showNativeTree()
       if (worker) postWorkerInit([])
       else loaded.value = true
       return
     }
 
     // 搜索 Worker 仅负责筛选与排序；已有原始树时先渲染，避免其启动失败或延迟使面板误显示为空。
-    filteredResult.value = children
-    firstMatchPath.value = []
+    showNativeTree()
     initWorker()
 
     postWorkerInit(children)
+  }
+
+  const loadBookmarks = (forceNative = false): Promise<void> => {
+    if (loadTask) {
+      if (forceNative) reloadRequested = true
+      return loadTask
+    }
+    hasNativeSnapshot = false
+    const task = Promise.resolve().then(async () => {
+      if (loadTask !== task) return
+      forceNative ||= reloadRequested
+      do {
+        reloadRequested = false
+        try {
+          await readBookmarks(forceNative)
+        } catch (error) {
+          // 读取失败期间若又收到变更，仍完成已请求的原生刷新。
+          if (!reloadRequested || loadTask !== task) throw error
+        }
+        forceNative = true
+      } while (reloadRequested && loadTask === task)
+    }).finally(() => {
+      if (loadTask === task) loadTask = null
+    })
+    loadTask = task
+    return task
   }
 
   const moveBookmark = async (
     id: string,
     destination: Parameters<typeof browser.bookmarks.move>[1],
   ) => {
-    suppressedMoveReloadIds.add(id)
+    const move = { id, receivedEvent: false }
+    pendingMoves.add(move)
     try {
-      const movedNode = await browser.bookmarks.move(id, destination)
-      const nextTree = cloneBookmarkTree(tree.value)
-      const source = findBookmarkLocation(nextTree, id)
-      const targetSiblings = movedNode.parentId
-        ? findBookmarkChildren(nextTree, movedNode.parentId)
-        : nextTree
-
-      if (!source || !targetSiblings) {
-        await loadBookmarks(true)
-        return
-      }
-
-      const [node] = source.siblings.splice(source.index, 1)
-      if (!node) {
-        await loadBookmarks(true)
-        return
-      }
-
-      Object.assign(node, { ...movedNode, children: node.children })
-      const targetIndex = Math.min(
-        Math.max(0, movedNode.index ?? targetSiblings.length),
-        targetSiblings.length,
-      )
-      targetSiblings.splice(targetIndex, 0, node)
-
-      updateSiblingIndexes(source.siblings)
-      if (source.siblings !== targetSiblings) updateSiblingIndexes(targetSiblings)
-
-      tree.value = nextTree
-      buildBookmarkNodeIndex(nextTree)
-      filteredResult.value = nextTree
-      postWorkerInit(nextTree)
+      await browser.bookmarks.move(id, destination)
     } catch (error) {
-      suppressedMoveReloadIds.delete(id)
+      if (pendingMoves.delete(move) && move.receivedEvent) reloadBookmarks('failed move')
       throw error
     }
+    // 面板关闭后不再重新启动加载；关闭前已收到的事件也随 Store 一起失效。
+    if (!pendingMoves.delete(move)) return
+    // move 返回值缺少父文件夹修改时间，使用原生快照保持排序元数据完整。
+    await loadBookmarks(true)
   }
 
   const _setSortMode = (mode: SortMode) => {
@@ -479,12 +524,15 @@ export const useBookmarkStore = defineStore('bookmark', () => {
   const dispose = () => {
     // 让尚未完成的缓存/原生读取结果失效，并释放 Pinia 单例持有的大对象。
     latestLoadRequest++
+    loadTask = null
+    reloadRequested = false
+    pendingMoves.clear()
     terminateWorker()
+    hasNativeSnapshot = false
     tree.value = []
     filteredResult.value = []
     firstMatchPath.value = []
     bookmarkNodeIndex.clear()
-    suppressedMoveReloadIds.clear()
     searchQuery.value = ''
     loaded.value = false
   }

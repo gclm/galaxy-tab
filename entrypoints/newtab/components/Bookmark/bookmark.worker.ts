@@ -5,6 +5,20 @@ import { SortMode } from '@/shared/enums'
 
 type BookmarkTreeNode = Browser.bookmarks.BookmarkTreeNode
 
+export interface BookmarkResultNode {
+  id: string
+  children?: BookmarkResultNode[]
+}
+
+let treeVersion = 0
+
+function resultNodes(nodes: BookmarkTreeNode[]): BookmarkResultNode[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    ...(node.children ? { children: resultNodes(node.children) } : {}),
+  }))
+}
+
 let tree: BookmarkTreeNode[] = []
 // 扁平索引：id -> { node, parents, titleLower, urlLower }
 let indexMap: Record<
@@ -194,7 +208,10 @@ function buildIndex() {
   indexMap = map
   cachedAllIds = Object.keys(map)
 
-  // 重置缓存
+  resetQueryCaches()
+}
+
+function resetQueryCaches() {
   lastQuery = ''
   lastResultIds = []
   // 使已排序缓存无效
@@ -326,45 +343,61 @@ self.onmessage = (e: MessageEvent) => {
   const { type, payload } = e.data
 
   try {
+    if (payload.language && payload.language !== currentLanguage) {
+      currentLanguage = payload.language
+      cachedSortedTree = null
+      cachedSortedTreeKey = null
+    }
     switch (type) {
       case 'INIT':
         tree = payload.tree
-        if (payload.language) currentLanguage = payload.language
+        treeVersion = payload.version
         // 构建扁平索引，供后续搜索使用
         buildIndex()
-        // 初始过滤（空查询）
-        const initialSortMode = payload.sortMode || SortMode.NameAsc
-        const initRes = filter('', initialSortMode)
-        self.postMessage({
-          type: 'INIT_DONE',
-          ...initRes,
-          // 主线程已经持有原始树，无需再结构化克隆并回传一份。
-          filteredResult: initialSortMode === SortMode.Original ? null : initRes.filteredResult,
-        })
+        postResult('INIT_DONE', payload)
         break
 
-      case 'UPDATE_SETTINGS':
-        if (payload.language) currentLanguage = payload.language
-        // 语言改变使缓存失效
-        // 目前，如果语言影响排序，清空缓存是最安全的做法
-        cachedSortedTree = null
-        cachedSortedTreeKey = null
+      case 'PATCH': {
+        const entry = indexMap[payload.id]
+        if (payload.baseVersion !== treeVersion || !entry) {
+          self.postMessage({ type: 'RESYNC_REQUIRED', version: payload.version })
+          break
+        }
+        Object.assign(entry.node, payload.changes)
+        entry.titleLower = (entry.node.title || '').toLowerCase()
+        entry.urlLower = (entry.node.url || '').toLowerCase()
+        treeVersion = payload.version
+        resetQueryCaches()
+        postResult('PATCH_DONE', payload)
         break
+      }
 
       case 'FILTER':
-        const { query, sortMode } = payload as {
-          query: string
-          sortMode: SortMode
-          language: string
+        if (payload.version !== treeVersion) {
+          self.postMessage({ type: 'RESYNC_REQUIRED', version: payload.version })
+          break
         }
-        const res = filter(query, sortMode)
-        self.postMessage({ type: 'FILTER_DONE', ...res })
+        postResult('FILTER_DONE', payload)
         break
     }
   } catch (err) {
     console.error('Worker error:', err)
     self.postMessage({ type: 'ERROR', error: String(err) })
   }
+}
+
+function postResult(type: string, payload: { query: string; sortMode: SortMode; requestId: number }) {
+  const result = filter(payload.query, payload.sortMode)
+  self.postMessage({
+    type,
+    version: treeVersion,
+    requestId: payload.requestId,
+    nodes:
+      !payload.query.trim() && payload.sortMode === SortMode.Original
+        ? null
+        : resultNodes(result.filteredResult),
+    firstMatchPath: result.firstMatchPath,
+  })
 }
 
 self.postMessage({ type: 'READY' })

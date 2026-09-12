@@ -43,7 +43,7 @@ const getActiveQuickLinkGroupId = inject(GET_ACTIVE_QUICK_LINK_GROUP_ID)
 
 const { t } = useTranslation()
 const quickLinksStore = useQuickLinksStore()
-const { popperClass: popperPerfClass, quickLinksGrouping } = useBookmarkItemContext()
+const { popperClass: popperPerfClass, quickLinksGrouping, expandedSets } = useBookmarkItemContext()
 
 const props = withDefaults(
   defineProps<{
@@ -238,7 +238,7 @@ async function addToQuickLinks() {
 const activeMap = inject(BOOKMARK_ACTIVE_MAP)
 
 const isExpanded = computed(() => {
-  return activeMap?.value?.[props.depth]?.includes(String(id.value)) ?? false
+  return expandedSets.value[props.depth]?.has(String(id.value)) ?? false
 })
 
 function toggleFolder() {

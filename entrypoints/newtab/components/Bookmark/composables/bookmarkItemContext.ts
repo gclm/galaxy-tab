@@ -3,6 +3,7 @@ import type { ComputedRef, InjectionKey } from 'vue'
 export interface BookmarkItemContext {
   popperClass: ComputedRef<string>
   quickLinksGrouping: ComputedRef<boolean>
+  expandedSets: ComputedRef<Readonly<Record<number, ReadonlySet<string>>>>
 }
 
 const BOOKMARK_ITEM_CONTEXT: InjectionKey<BookmarkItemContext> = Symbol('bookmarkItemContext')
