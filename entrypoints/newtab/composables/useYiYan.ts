@@ -13,8 +13,16 @@ export function useYiYan() {
 
   const yiyan = ref<string>()
   const yiyanOrigin = ref<string>()
+  let requestVersion = 0
+  const invalidate = () => {
+    requestVersion++
+  }
+  watch(() => settings.yiyan.provider, invalidate, { flush: 'sync' })
+  onUnmounted(invalidate)
 
   const load = async () => {
+    const version = ++requestVersion
+    const isCurrent = () => version === requestVersion && settings.yiyan.enabled
     try {
       if (settings.yiyan.provider === 'custom') {
         const lines = settings.yiyan.customLines
@@ -31,6 +39,7 @@ export function useYiYan() {
 
       const { provider } = settings.yiyan
       const cache = await getYiyanCache()
+      if (!isCurrent()) return
       const canUseCache = cache?.provider === provider && Boolean(cache.res?.yiyan)
 
       // 先展示最近一次可用内容；即使需要刷新，也推迟到首屏后，避免启动时阻塞布局。
@@ -44,8 +53,9 @@ export function useYiYan() {
       }
 
       const refresh = async () => {
+        if (!isCurrent()) return
         const res = await yiyanProviders[provider].load()
-        if (!res.yiyan) return
+        if (!isCurrent() || !res.yiyan) return
         yiyan.value = res.yiyan
         yiyanOrigin.value = res.yiyanOrigin
         await setYiyanCache(provider, res)
