@@ -169,28 +169,43 @@ async function showSearchHistories() {
 
 type SuggestParser = (text: string, signal?: AbortSignal) => Promise<string[]>
 
+function waitForRetry(signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    const finish = () => {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', finish)
+      resolve()
+    }
+    const timer = setTimeout(finish, 100)
+    signal.addEventListener('abort', finish, { once: true })
+    if (signal.aborted) finish()
+  })
+}
+
 async function fetchSuggestions(
   text: string,
   parser: SuggestParser,
   version: number,
   signal: AbortSignal,
+  cacheKey: string,
 ) {
   try {
     let list: string[] = []
     for (let attempt = 0; attempt <= 2; attempt += 1) {
+      if (signal.aborted || version !== suggestionRequestVersion) return
       try {
         list = await parser(text, signal)
         break
       } catch (error) {
         if (signal.aborted || version !== suggestionRequestVersion) return
         if (attempt === 2) throw error
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await waitForRetry(signal)
       }
     }
 
     if (version !== suggestionRequestVersion || !isLiveSuggestionResult(text)) return
     searchSuggestions.value = list
-    if (list.length > 0) searchSuggestCache.set(text, list)
+    if (list.length > 0) searchSuggestCache.set(cacheKey, list)
   } catch (error) {
     if (signal.aborted || version !== suggestionRequestVersion) return
     console.error('Failed to fetch search suggestions:', error)
@@ -202,18 +217,19 @@ function showSuggestionsDebounced(queryText?: string) {
   historyRequestVersion += 1
   const query = (queryText ?? props.searchText).trim()
   latestLiveQuery.value = query
+  cancelSuggestionRequest()
   if (!settings.search.suggestionsEnabled) {
     searchSuggestions.value = []
     clearActiveSuggest()
     return
   }
-  cancelSuggestionRequest()
   if (!query) {
     return
   }
 
   // 先检查缓存，命中则直接返回
-  const cached = searchSuggestCache.get(query)
+  const cacheKey = `${settings.search.suggestionAPI}:${query}`
+  const cached = searchSuggestCache.get(cacheKey)
   if (cached) {
     searchSuggestions.value = cached
     return
@@ -226,9 +242,19 @@ function showSuggestionsDebounced(queryText?: string) {
   suggestionController = controller
   suggestionTimer = setTimeout(() => {
     suggestionTimer = null
-    void fetchSuggestions(query, api.parser, version, controller.signal)
+    void fetchSuggestions(query, api.parser, version, controller.signal, cacheKey)
   }, 250)
 }
+
+watch(
+  [() => settings.search.suggestionAPI, () => settings.search.suggestionsEnabled],
+  () => {
+    cancelSuggestionRequest()
+    if (!props.searchText.trim()) return
+    clearSearchSuggestions()
+    if (focusStore.isFocused) showSuggestionsDebounced()
+  },
+)
 
 onUnmounted(() => {
   cancelSuggestionRequest()

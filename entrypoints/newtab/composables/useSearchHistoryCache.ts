@@ -1,14 +1,22 @@
-import { searchHistoriesStorage } from '@newtab/shared/storages/searchHistoriesStorage'
+import {
+  getSearchHistories,
+  normalizeSearchHistories,
+  searchHistoriesStorage,
+} from '@newtab/shared/storages/searchHistoriesStorage'
 
 const historiesRef: Ref<string[]> = shallowRef([])
 let loaded = false
 let loadingPromise: Promise<void> | null = null
 let activeConsumers = 0
 let stopWatching: (() => void) | null = null
-let suppressNextWatch = false
+let revision = 0
 
 async function loadFromStorage() {
-  historiesRef.value = await searchHistoriesStorage.getValue()
+  const version = revision
+  const list = await getSearchHistories()
+  if (version !== revision) return
+  historiesRef.value = list
+  loaded = true
 }
 
 async function ensureLoaded(force = false) {
@@ -17,7 +25,6 @@ async function ensureLoaded(force = false) {
   if (!loadingPromise) {
     loadingPromise = loadFromStorage().finally(() => {
       loadingPromise = null
-      loaded = true
     })
   }
   await loadingPromise
@@ -26,12 +33,9 @@ async function ensureLoaded(force = false) {
 function retainWatcher() {
   activeConsumers += 1
   if (!stopWatching) {
-    stopWatching = searchHistoriesStorage.watch(async () => {
-      if (suppressNextWatch) {
-        suppressNextWatch = false
-        return
-      }
-      await loadFromStorage()
+    stopWatching = searchHistoriesStorage.watch((list) => {
+      revision++
+      historiesRef.value = normalizeSearchHistories(list)
       loaded = true
     })
   }
@@ -44,7 +48,7 @@ function retainWatcher() {
 }
 
 async function updateStorage(list: string[]) {
-  suppressNextWatch = true
+  revision++
   historiesRef.value = list
   await searchHistoriesStorage.setValue(list)
   loaded = true
