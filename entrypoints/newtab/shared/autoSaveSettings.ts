@@ -36,14 +36,18 @@ export function setupAutoSaveSettings(settings: ReturnType<typeof useSettingsSto
     }
   }, 1500)
 
-  settings.$subscribe((_mutation, state) => {
-    if (state.theme.primaryColor === null) {
-      state.theme.primaryColor = defaultSettings.theme.primaryColor
-    }
+  settings.$subscribe(
+    (_mutation, state) => {
+      if (state.theme.primaryColor === null) {
+        state.theme.primaryColor = defaultSettings.theme.primaryColor
+      } else if (settings.isApplyingStorage()) return
 
-    mutationVersion += 1
-    consecutiveFailures = 0
-    blockedVersion = -1
-    void saveSettingsDebounced()
-  })
+      mutationVersion += 1
+      consecutiveFailures = 0
+      blockedVersion = -1
+      void saveSettingsDebounced()
+    },
+    // 同步识别回填来源，避免异步订阅执行时回填标记已清除。
+    { flush: 'sync' },
+  )
 }

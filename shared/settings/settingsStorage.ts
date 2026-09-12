@@ -49,14 +49,14 @@ const storedSettings = storage.defineItem<CURRENT_CONFIG_SCHEMA>('local:settings
   },
 })
 
-async function getCurrentSettings(): Promise<CURRENT_CONFIG_SCHEMA> {
+async function getCurrentSettings() {
   // 必须先等待 WXT 自己的迁移完成，再比较配置值和元数据，避免读到迁移中的中间状态。
   const value = await storedSettings.getValue()
   const metadata = (await storedSettings.getMeta()) as { v?: number; [key: string]: unknown }
   const metadataVersion = typeof metadata.v === 'number' ? metadata.v : null
 
   if (value.version === CURRENT_CONFIG_VERSION && metadataVersion === CURRENT_CONFIG_VERSION) {
-    return value
+    return { value, metadata }
   }
 
   if (value.version < CURRENT_CONFIG_VERSION) {
@@ -67,14 +67,14 @@ async function getCurrentSettings(): Promise<CURRENT_CONFIG_SCHEMA> {
       settings: repaired,
       'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
     })
-    return repaired
+    return { value: repaired, metadata: { ...metadata, v: CURRENT_CONFIG_VERSION } }
   }
 
   if (value.version === CURRENT_CONFIG_VERSION && metadataVersion !== CURRENT_CONFIG_VERSION) {
     await browser.storage.local.set({
       'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
     })
-    return value
+    return { value, metadata: { ...metadata, v: CURRENT_CONFIG_VERSION } }
   }
 
   throw new Error(
@@ -86,15 +86,14 @@ async function getCurrentSettings(): Promise<CURRENT_CONFIG_SCHEMA> {
 export const settingsStorage = {
   ...storedSettings,
   async getValue() {
-    return getCurrentSettings()
+    return (await getCurrentSettings()).value
   },
   async setValue(value: CURRENT_CONFIG_SCHEMA) {
     if (value.version !== CURRENT_CONFIG_VERSION) {
       throw new Error(`Cannot save settings with version ${value.version}`)
     }
 
-    await getCurrentSettings()
-    const metadata = await storedSettings.getMeta()
+    const { metadata } = await getCurrentSettings()
     await browser.storage.local.set({
       settings: value,
       'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },

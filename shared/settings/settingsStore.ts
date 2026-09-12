@@ -8,6 +8,7 @@ import { settingsStorage } from './settingsStorage'
 export const useSettingsStore = defineStore('option', () => {
   const state = reactive(structuredClone(defaultSettings as CURRENT_CONFIG_SCHEMA))
   let unwatchStorage: (() => void) | null = null
+  let applyingStorage = false
 
   const init = async () => {
     const settings = await settingsStorage.getValue()
@@ -24,7 +25,12 @@ export const useSettingsStore = defineStore('option', () => {
     // 监听其他标签页对设置的更改，实时同步到当前标签页的 store
     unwatchStorage = settingsStorage.watch((newSettings) => {
       if (!newSettings) return
-      Object.assign(state, normalizeCurrentSettings(newSettings))
+      applyingStorage = true
+      try {
+        Object.assign(state, normalizeCurrentSettings(newSettings))
+      } finally {
+        applyingStorage = false
+      }
     })
   }
 
@@ -39,6 +45,7 @@ export const useSettingsStore = defineStore('option', () => {
 
   // 返回原始（非响应式）底层状态对象，对structuredClone安全
   const getRawState = (): CURRENT_CONFIG_SCHEMA => toRaw(state) as CURRENT_CONFIG_SCHEMA
+  const isApplyingStorage = () => applyingStorage
 
-  return { ...toRefs(state), init, deinit, save, getRawState }
+  return { ...toRefs(state), init, deinit, save, getRawState, isApplyingStorage }
 })
