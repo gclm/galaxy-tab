@@ -127,22 +127,24 @@ self.onmessage = (
 ) => {
   const { id, imageBitmap, width, height } = e.data
 
-  const canvas = new OffscreenCanvas(width, height)
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    self.postMessage({ id, error: new Error('Could not get OffscreenCanvas context') })
-    return
+  try {
+    const canvas = new OffscreenCanvas(width, height)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Could not get OffscreenCanvas context')
+
+    ctx.drawImage(imageBitmap, 0, 0)
+    const imageData = ctx.getImageData(0, 0, width, height).data
+
+    const top = sourceColorFromImageBytes(imageData)
+
+    const theme = themeFromSourceColor(top)
+    const cssLight = buildCssVars(theme.schemes.light, 'light')
+    const cssDark = buildCssVars(theme.schemes.dark, 'dark')
+
+    self.postMessage({ id, cssLight, cssDark })
+  } catch (error) {
+    self.postMessage({ id, error: String(error) })
+  } finally {
+    imageBitmap.close()
   }
-
-  ctx.drawImage(imageBitmap, 0, 0)
-  const imageData = ctx.getImageData(0, 0, width, height).data
-  imageBitmap.close()
-
-  const top = sourceColorFromImageBytes(imageData)
-
-  const theme = themeFromSourceColor(top)
-  const cssLight = buildCssVars(theme.schemes.light, 'light')
-  const cssDark = buildCssVars(theme.schemes.dark, 'dark')
-
-  self.postMessage({ id, cssLight, cssDark })
 }

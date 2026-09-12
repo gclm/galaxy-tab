@@ -207,7 +207,6 @@ function createOnlineWallpaperBlobUrl(
 
 const bgTypeProviders: Record<BgType, () => Promise<BackgroundSource>> = {
   [BgType.Bing]: async () => {
-    await bingWallpaperURLGetter.init()
     return {
       url: bingUrl.value,
       sourceKey: getBingMonetSourceKey(),
@@ -215,9 +214,8 @@ const bgTypeProviders: Record<BgType, () => Promise<BackgroundSource>> = {
     }
   },
   [BgType.Local]: async () => {
-    await localLibrary.init()
     const variant = activeVariant.value
-    const id = await localLibrary.choose(variant)
+    const id = localLibrary.selected[variant]
     const items = localLibrary.library[variant].items
     const candidates = [
       ...items.filter((item) => item.id === id),
@@ -377,9 +375,19 @@ async function updateBackgroundURL(type: BgType): Promise<void> {
 
     let source: BackgroundSource
     try {
+      if (type === BgType.Bing) await bingWallpaperURLGetter.init()
+      else if (type === BgType.Local) {
+        await localLibrary.init()
+        if (requestVersion !== backgroundRequestVersion) return
+        await localLibrary.choose(activeVariant.value)
+      }
+      // 初始化可能更新 URL 或选中项，先让统一入口接收最新来源，再准备媒体。
+      await nextTick()
+      if (requestVersion !== backgroundRequestVersion) return
       source = await provider()
     } catch (error) {
       if (requestVersion !== backgroundRequestVersion) return
+      requestedSource = undefined
       console.error('Failed to update background URL:', error)
       isSwitching.value = false
       return
@@ -424,48 +432,45 @@ async function updateBackgroundURL(type: BgType): Promise<void> {
   }
 }
 
+const backgroundSource = computed(() => {
+  const type = settings.background.bgType
+  if (type === BgType.Local) {
+    const variant = activeVariant.value
+    return JSON.stringify([
+      type,
+      variant,
+      localLibrary.selected[variant],
+      localLibrary.library[variant].items.map((item) => [item.id, item.sha256 ?? '']),
+    ])
+  }
+  return JSON.stringify([
+    type,
+    type === BgType.Bing ? bingUrl.value : type === BgType.Online ? settings.background.online.url : '',
+  ])
+})
+
+let requestedSource: string | undefined
+let backgroundTask = Promise.resolve()
+
+function requestBackgroundUpdate(force = false) {
+  if (!force && requestedSource === backgroundSource.value) return backgroundTask
+  requestedSource = backgroundSource.value
+  backgroundTask = updateBackgroundURL(settings.background.bgType)
+  return backgroundTask
+}
+
 const { invalidate: invalidateMonet, onImageLoaded: onImgLoaded } = useBackgroundMonet({
   backgroundUrl: bgURL,
   image: imageRef,
   isVideo: isVideoWallpaper,
   sourceKey: activeMonetSourceKey,
-  refreshOnline: () => updateBackgroundURL(BgType.Online),
+  refreshOnline: () => requestBackgroundUpdate(true),
 })
 
-watch(
-  () => settings.background.bgType,
-  (newType, oldType) => {
-    if (newType !== oldType) void updateBackgroundURL(newType)
-  },
-)
-
-watch(
-  [
-    activeVariant,
-    () => localLibrary.selected[activeVariant.value],
-    () =>
-      localLibrary.library[activeVariant.value].items
-        .map((item) => `${item.id}:${item.sha256 ?? ''}`)
-        .join(','),
-  ],
-  () => {
-    if (settings.background.bgType === BgType.Local) void updateBackgroundURL(BgType.Local)
-  },
-)
-
-watch(bingUrl, () => {
-  if (settings.background.bgType === BgType.Bing) void updateBackgroundURL(BgType.Bing)
-})
-
-watch(
-  () => settings.background.online.url,
-  () => {
-    if (settings.background.bgType === BgType.Online) void updateBackgroundURL(BgType.Online)
-  },
-)
+watch(backgroundSource, () => void requestBackgroundUpdate())
 
 onMounted(async () => {
-  await updateBackgroundURL(settings.background.bgType)
+  await requestBackgroundUpdate()
 })
 
 // 暴露刷新方法，供父组件调用
@@ -474,15 +479,15 @@ async function refreshBackground() {
   try {
     if (type === BgType.Bing) {
       await bingWallpaperURLGetter.refresh(true)
-      await updateBackgroundURL(BgType.Bing)
+      await requestBackgroundUpdate()
     } else if (type === BgType.Local) {
       await localLibrary.choose(activeVariant.value, true)
-      await updateBackgroundURL(type)
+      await requestBackgroundUpdate()
     } else if (type === BgType.Online) {
       // Clear IDB cache only; the current blob URL is revoked through
       // updateBackgroundURL's normal revokeLastBlobUrl() path.
       await clearAllOnlineWallpaperCache()
-      await updateBackgroundURL(BgType.Online)
+      await requestBackgroundUpdate(true)
     }
   } catch (error) {
     console.error('[background] Failed to refresh background:', error)
@@ -492,7 +497,7 @@ defineExpose({ refreshBackground })
 
 useEventListener('pageshow', async (e) => {
   if (e.persisted) {
-    await updateBackgroundURL(settings.background.bgType)
+    await requestBackgroundUpdate(true)
   }
 })
 

@@ -1,35 +1,53 @@
-import { applyStoredMonetColors, saveMonetColors } from '@/shared/theme/monetStorage'
 import { createExtensionWorker } from '@/shared/worker'
 
 import monetWorkerUrl from './monet.worker?worker&url'
 
 let worker: Worker | null = null
-// 用于唯一标识每个 Worker 消息请求
 let msgId = 0
-// 存储待处理的 Promise resolve 函数，key 为 msgId
-const pendingResolves = new Map<
+type MonetPalette = { cssLight: Record<string, string>; cssDark: Record<string, string> }
+const pending = new Map<
   number,
-  (result: { cssLight: Record<string, string>; cssDark: Record<string, string> }) => void
+  {
+    resolve: (colors: MonetPalette) => void
+    reject: (error: Error) => void
+    timer: ReturnType<typeof setTimeout>
+  }
 >()
-// 存储待处理的 Promise 拒绝函数
-const pendingRejects = new Map<number, (error: Error) => void>()
+
+function takeRequest(id: number) {
+  const request = pending.get(id)
+  if (request) clearTimeout(request.timer)
+  pending.delete(id)
+  return request
+}
+
+export function disposeMonetWorker(error = new Error('Monet worker disposed')) {
+  if (worker) {
+    worker.onmessage = null
+    worker.onerror = null
+    worker.onmessageerror = null
+    worker.terminate()
+    worker = null
+  }
+  for (const id of pending.keys()) takeRequest(id)?.reject(error)
+}
 
 function getWorker() {
   if (!worker) {
     worker = createExtensionWorker(monetWorkerUrl)
     worker.onmessage = (e) => {
       const { id, cssLight, cssDark, error } = e.data
+      const request = takeRequest(id)
       if (error) {
-        pendingRejects.get(id)?.(error)
+        request?.reject(error instanceof Error ? error : new Error(String(error)))
       } else {
-        pendingResolves.get(id)?.({ cssLight, cssDark })
+        request?.resolve({ cssLight, cssDark })
       }
-      pendingResolves.delete(id)
-      pendingRejects.delete(id)
     }
     worker.onerror = (e) => {
-      console.error('Monet worker error:', e)
+      disposeMonetWorker(new Error(e.message || 'Monet worker error'))
     }
+    worker.onmessageerror = () => disposeMonetWorker(new Error('Invalid Monet worker message'))
   }
   return worker
 }
@@ -42,15 +60,9 @@ function getWorker() {
  * @param image HTMLImageElement
  * @param cropCenter 是否裁剪只要中心区域
  */
-async function getThemeFromImage(
-  image: HTMLImageElement,
-  cropCenter = false,
-): Promise<{ cssLight: Record<string, string>; cssDark: Record<string, string> }> {
+async function prepareBitmap(image: HTMLImageElement, cropCenter = false): Promise<ImageBitmap> {
   if (!image.complete) {
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve()
-      image.onerror = () => reject(new Error('Image load failed'))
-    })
+    await image.decode()
   }
 
   const MAX_SIZE = 64
@@ -82,49 +94,37 @@ async function getThemeFromImage(
   }
 
   // 使用 createImageBitmap 异步缩放
-  const bitmap = await createImageBitmap(image, sx, sy, sw, sh, {
+  return createImageBitmap(image, sx, sy, sw, sh, {
     resizeWidth: width,
     resizeHeight: height,
     resizeQuality: 'low',
   })
+}
 
+export function extractMonetColors(image: HTMLImageElement, cropCenter = false): Promise<MonetPalette> {
+  const id = msgId++
   return new Promise((resolve, reject) => {
-    const id = msgId++
-    pendingResolves.set(id, resolve)
-    pendingRejects.set(id, reject)
-    // 将 bitmap 的所有权转移给 Worker，避免拷贝
-    getWorker().postMessage({ id, imageBitmap: bitmap, width, height }, [bitmap])
+    const timer = setTimeout(() => disposeMonetWorker(new Error('Monet extraction timed out')), 10_000)
+    pending.set(id, { resolve, reject, timer })
+    void prepareBitmap(image, cropCenter)
+      .then((bitmap) => {
+        // 关闭功能或超时后，异步解码结果只能释放，不能重新创建 Worker。
+        if (!pending.has(id)) {
+          bitmap.close()
+          return
+        }
+        try {
+          getWorker().postMessage(
+            { id, imageBitmap: bitmap, width: bitmap.width, height: bitmap.height },
+            [bitmap],
+          )
+        } catch (error) {
+          bitmap.close()
+          throw error
+        }
+      })
+      .catch((error: unknown) => {
+        takeRequest(id)?.reject(error instanceof Error ? error : new Error(String(error)))
+      })
   })
-}
-
-type ApplyMonetOptions = {
-  cropCenter?: boolean
-  sourceKey?: string
-}
-
-export async function applyMonet(
-  image: HTMLImageElement | undefined | null,
-  options: boolean | ApplyMonetOptions = false,
-) {
-  if (!image) return
-
-  const cropCenter = typeof options === 'boolean' ? options : (options.cropCenter ?? false)
-  const sourceKey = typeof options === 'boolean' ? undefined : options.sourceKey
-
-  let cssLight: Record<string, string>
-  let cssDark: Record<string, string>
-  try {
-    const result = await getThemeFromImage(image, cropCenter)
-    cssLight = result.cssLight
-    cssDark = result.cssDark
-  } catch (e) {
-    console.error('Failed to extract source color for Monet theme:', e)
-    return
-  }
-
-  // 保存莫奈颜色到 storage，供 popup 等其他页面使用
-  await saveMonetColors(cssLight, cssDark, sourceKey)
-
-  // 应用莫奈颜色到当前页面
-  applyStoredMonetColors({ cssLight, cssDark, timestamp: Date.now(), sourceKey })
 }

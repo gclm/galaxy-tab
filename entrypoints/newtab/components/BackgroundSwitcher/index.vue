@@ -53,6 +53,8 @@ const thumbnailTasks = new Map<string, { promise: Promise<void>; version: number
 const thumbnailLanes = [Promise.resolve(), Promise.resolve()]
 let thumbnailLane = 0
 let thumbnailVersion = 0
+let thumbnailLoads = 0
+let metadataRefreshNeeded = false
 const { tempOnlineUrl, changeOnlineBg, onlineImageWarn } = useBackgroundSwitcher()
 const bingSrc = bingWallpaperURLGetter.getBgUrl()
 const bingInfo = bingWallpaperURLGetter.getInfo()
@@ -103,6 +105,7 @@ async function loadThumbnail(group: WallpaperVariant, item: WallpaperItem) {
   if (thumbnails[key] || thumbnailTasks.has(key)) return
   const version = thumbnailVersion
   const lane = thumbnailLane++ % 2
+  thumbnailLoads++
   const task = thumbnailLanes[lane]!.then(async () => {
     if (!opened.value || version !== thumbnailVersion) return
     let thumbnail = await idbGet('wallpaperLibrary', `thumbnail:${key}`)
@@ -113,7 +116,7 @@ async function loadThumbnail(group: WallpaperVariant, item: WallpaperItem) {
           const current = library[group].items.find((value) => value.id === item.id)
           if (current) current.metadataFailed = true
         })
-        await local.reload()
+        metadataRefreshNeeded = true
         return
       }
       try {
@@ -126,13 +129,13 @@ async function loadThumbnail(group: WallpaperVariant, item: WallpaperItem) {
           if (result.thumbnail)
             await tx.objectStore('wallpaperLibrary').put(result.thumbnail, `thumbnail:${key}`)
         })
-        await local.reload()
+        metadataRefreshNeeded = true
       } catch {
         await updateWallpaperLibrary((library) => {
           const current = library[group].items.find((value) => value.id === item.id)
           if (current) current.metadataFailed = true
         })
-        await local.reload()
+        metadataRefreshNeeded = true
       }
     }
     if (thumbnail instanceof Blob && version === thumbnailVersion && opened.value) {
@@ -140,11 +143,20 @@ async function loadThumbnail(group: WallpaperVariant, item: WallpaperItem) {
       thumbnailHashes.set(key, item.sha256)
     }
   })
-    .catch(console.error)
-    .finally(() => {
+    .finally(async () => {
       const current = thumbnailTasks.get(key)
       if (current?.promise === task && current.version === version) thumbnailTasks.delete(key)
+      // 关闭面板会清空任务索引，但在途元数据仍需在两路队列结束后统一回填。
+      thumbnailLoads--
+      if (!thumbnailLoads && metadataRefreshNeeded) {
+        metadataRefreshNeeded = false
+        await local.reload().catch((error) => {
+          metadataRefreshNeeded = true
+          throw error
+        })
+      }
     })
+    .catch(console.error)
   thumbnailLanes[lane] = task
   thumbnailTasks.set(key, { promise: task, version })
   await task
