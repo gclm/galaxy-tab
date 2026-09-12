@@ -5,7 +5,7 @@ import { browser } from 'wxt/browser'
 
 import { fetchFaviconWithCache, warmFaviconCache } from '@/shared/media'
 import { DEFAULT_QUICK_LINK_GROUP_ID, useQuickLinksStore } from '@/shared/quickLinks'
-import { settingsStorage } from '@/shared/settings'
+import { useSettingsStore } from '@/shared/settings'
 import {
   clearExtensionData,
   downloadLegacySettingsBackup,
@@ -22,6 +22,7 @@ const { t } = useTranslation()
 
 const legacyT = (key: string) => t(`newtab:bootstrap.invalidVer.${key}`)
 const quickLinksStore = useQuickLinksStore()
+const settings = useSettingsStore()
 
 const currentTab = shallowRef<{
   url: string
@@ -99,11 +100,13 @@ watchEffect(async () => {
 onMounted(async () => {
   if (props.hasInvalidSettings) return
 
-  const [settings] = await Promise.all([settingsStorage.getValue(), quickLinksStore.init()])
   groupingEnabled.value = settings.quickLinks.grouping ?? false
 
   try {
-    const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+    const [tabs] = await Promise.all([
+      browser.tabs.query({ active: true, currentWindow: true }),
+      quickLinksStore.init(),
+    ])
     const tab = tabs[0]
     if (tab?.url && isValidUrl(tab.url)) {
       currentTab.value = {

@@ -96,7 +96,7 @@ async function probeExistingDB(): Promise<{ version: number; needsUpgrade: boole
 
 export function getDB() {
   if (!dbPromise) {
-    dbPromise = (async () => {
+    const task = (async () => {
       const { version: existingVersion, needsUpgrade } = await probeExistingDB()
       // 需要创建 store 时版本号必须高于当前值以触发 upgrade；
       // 否则以当前版本打开即可（stores 已由 localforage 或上次运行创建）
@@ -121,6 +121,10 @@ export function getDB() {
 
       return db
     })()
+    dbPromise = task
+    void task.catch(() => {
+      if (dbPromise === task) dbPromise = null
+    })
   }
   return dbPromise
 }

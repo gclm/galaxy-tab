@@ -59,8 +59,6 @@ export async function enhancedFetch<T = unknown>(
       signal: controller.signal,
     })
 
-    clearTimeout(timeoutId)
-
     // 处理 HTTP 错误状态码
     if (!response.ok) {
       throw new EnhancedFetchError(
@@ -84,6 +82,7 @@ export async function enhancedFetch<T = unknown>(
 
       return (await response.json()) as T
     } catch (error) {
+      if (controller.signal.aborted) throw error
       throw new EnhancedFetchError(
         `Invalid ${responseType} response from ${url}`,
         'invalid-data',
@@ -98,7 +97,7 @@ export async function enhancedFetch<T = unknown>(
       throw error
     }
 
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (controller.signal.aborted) {
       if (!timedOut) throw error
       const wrappedError = new EnhancedFetchError(
         `Fetch timed out after ${timeout}ms: ${url}`,
