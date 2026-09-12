@@ -110,7 +110,8 @@ export const useQuickLinksStore = defineStore('quickLinks', () => {
 
   const getDefaultGroupName = () => i18next.t('newtab:quickLinks.groups.default')
 
-  const getGroup = (groupId: string) => groupState.value.find((group) => group.id === groupId)
+  const groupIndex = computed(() => new Map(groupState.value.map((group) => [group.id, group])))
+  const getGroup = (groupId: string) => groupIndex.value.get(groupId)
 
   const sanitizeGroups = (nextGroups?: QuickLinkGroup[]): QuickLinkGroup[] => {
     if (!nextGroups?.length) return []
@@ -157,21 +158,29 @@ export const useQuickLinksStore = defineStore('quickLinks', () => {
     return getGroup(groupId)?.items.length ?? 0
   }
 
-  const findFlatQuickLinkIndexByUrl = (url: string) => {
-    const normalizedUrl = normalizeUrlForDedup(url)
-    return flatItems.value.findIndex((item) => normalizeUrlForDedup(item.url) === normalizedUrl)
-  }
+  const flatUrlIndex = computed(() => {
+    const result = new Map<string, number>()
+    flatItems.value.forEach((item, index) => {
+      const key = normalizeUrlForDedup(item.url)
+      if (!result.has(key)) result.set(key, index)
+    })
+    return result
+  })
+  const findFlatQuickLinkIndexByUrl = (url: string) =>
+    flatUrlIndex.value.get(normalizeUrlForDedup(url)) ?? -1
 
-  const findGroupedQuickLinkByUrl = (url: string) => {
-    const normalizedUrl = normalizeUrlForDedup(url)
+  const groupedUrlIndex = computed(() => {
+    const result = new Map<string, { group: QuickLinkGroup; index: number }>()
     for (const group of groupState.value) {
-      const index = group.items.findIndex(
-        (item) => normalizeUrlForDedup(item.url) === normalizedUrl,
-      )
-      if (index >= 0) return { group, index }
+      group.items.forEach((item, index) => {
+        const key = normalizeUrlForDedup(item.url)
+        if (!result.has(key)) result.set(key, { group, index })
+      })
     }
-    return null
-  }
+    return result
+  })
+  const findGroupedQuickLinkByUrl = (url: string) =>
+    groupedUrlIndex.value.get(normalizeUrlForDedup(url)) ?? null
 
   const applyItems = (nextItems: QuickLinksData['items'], nextGroups?: QuickLinkGroup[]) => {
     const normalized = ensureQuickLinksStableIds({ items: nextItems, groups: nextGroups })

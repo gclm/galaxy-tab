@@ -149,12 +149,23 @@ const pageSize = computed(() => COLS.value * ROWS.value)
 const allItems = computed(() => buildQuickLinkDisplayItems(quickLinks.value, topSites.value))
 const userGroups = computed(() => (settings.quickLinks.grouping ? quickLinksStore.groups : []))
 const topSitesItems = computed(() => buildTopSiteDisplayItems(topSites.value))
+const searchTextIndex = computed(() => {
+  const index = new Map<string, string>()
+  for (const item of [...quickLinks.value, ...topSites.value]) {
+    const title = item.title || ''
+    if (!index.has(title)) index.set(title, title.toLowerCase())
+    if (!index.has(item.url)) index.set(item.url, item.url.toLowerCase())
+  }
+  return index
+})
+const matchesQuery = (item: { title: string; url: string }, q: string) =>
+  searchTextIndex.value.get(item.title)!.includes(q) ||
+  searchTextIndex.value.get(item.url)!.includes(q)
+
 const filteredTopSitesItems = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return topSitesItems.value
-  return topSitesItems.value.filter(
-    (item) => item.title.toLowerCase().includes(q) || item.url.toLowerCase().includes(q),
-  )
+  return topSitesItems.value.filter((item) => matchesQuery(item, q))
 })
 
 const isSearching = computed(() => query.value.trim().length > 0)
@@ -162,9 +173,7 @@ const isSearching = computed(() => query.value.trim().length > 0)
 const filteredItems = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return allItems.value
-  return allItems.value.filter(
-    (item) => item.title.toLowerCase().includes(q) || item.url.toLowerCase().includes(q),
-  )
+  return allItems.value.filter((item) => matchesQuery(item, q))
 })
 
 // 添加按钮占1个槽，纳入分页计算
@@ -342,7 +351,7 @@ const groupViews = computed<GroupView[]>(() => {
 
     for (let index = 0; index < group.items.length; index++) {
       const item = group.items[index]!
-      if (q && !item.title.toLowerCase().includes(q) && !item.url.toLowerCase().includes(q)) {
+      if (q && !matchesQuery(item, q)) {
         continue
       }
       items.push({
@@ -1234,6 +1243,7 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 10px 8px;
   overflow: hidden;
+  text-decoration: none;
   cursor: pointer;
   border-radius: calc(var(--le-radius-base, 20px) * 0.8);
   transition:
