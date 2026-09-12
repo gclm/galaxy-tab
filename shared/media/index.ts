@@ -116,7 +116,10 @@ function preloadFavicon(src: string): Promise<boolean> {
 /**
  * 返回 favicon 的展示状态。L1 未命中时保持图标位空白，避免默认图标在真实图标到达前闪现。
  */
-export function getFaviconDisplay(url: string | Ref<string | null>): Ref<FaviconDisplay> {
+export function getFaviconDisplay(
+  url: string | Ref<string | null>,
+  allowChromiumNativeFallback: boolean | Ref<boolean> = false,
+): Ref<FaviconDisplay> {
   const display = ref<FaviconDisplay>({ src: '', state: 'pending' })
   let seq = 0
 
@@ -142,7 +145,7 @@ export function getFaviconDisplay(url: string | Ref<string | null>): Ref<Favicon
     if (currentSeq !== seq) return
     if (useCachedFavicon()) return
 
-    const favicon = await fetchFaviconWithCache(u).catch(() => null)
+    const favicon = await fetchFaviconWithCache(u, unref(allowChromiumNativeFallback)).catch(() => null)
     if (currentSeq !== seq) return
     if (!favicon || !(await preloadFavicon(favicon)) || currentSeq !== seq) {
       if (currentSeq === seq) {
@@ -159,6 +162,9 @@ export function getFaviconDisplay(url: string | Ref<string | null>): Ref<Favicon
 
   resolve(unref(url))
   if (isRef(url)) watch(url, resolve)
+  if (isRef(allowChromiumNativeFallback)) {
+    watch(allowChromiumNativeFallback, () => resolve(unref(url)))
+  }
 
   return display
 }

@@ -12,7 +12,10 @@ const props = defineProps<{
 const settings = useSettingsStore()
 // 用户保存的图标不需要解析；移除后再恢复对链接 favicon 的获取。
 const displayUrl = computed(() => (props.favicon ? null : props.url))
-const faviconDisplay = getFaviconDisplay(displayUrl)
+const faviconDisplay = getFaviconDisplay(
+  displayUrl,
+  computed(() => !settings.quickLinks.fallbackToTitleInitial),
+)
 const src = computed(() => props.favicon || faviconDisplay.value.src || undefined)
 const pending = computed(() => !props.favicon && faviconDisplay.value.state === 'pending')
 const fallbackInitial = computed(() => {

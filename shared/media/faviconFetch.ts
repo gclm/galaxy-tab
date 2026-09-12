@@ -104,6 +104,24 @@ const l1Cache = new Map<string, FaviconCacheEntry>()
 // 去重：防止对同一 origin 发起多个并发请求
 const pendingFetches = new Map<string, Promise<string | null>>()
 
+let activeFetches = 0
+const fetchWaiters = new Set<() => void>()
+
+/** 限制完整站点探测任务；站点内部的候选优先级和并行策略保持不变。 */
+async function withFetchSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (activeFetches >= 4) await new Promise<void>((resolve) => fetchWaiters.add(resolve))
+  else activeFetches++
+  try {
+    return await task()
+  } finally {
+    const next = fetchWaiters.values().next().value
+    if (next) {
+      fetchWaiters.delete(next)
+      next()
+    } else activeFetches--
+  }
+}
+
 // 同一浏览器会话内已确认无图标的站点直接回落，避免重复探测。
 const FAVICON_FAILURE_CACHE_MAX_ENTRIES = 200
 const faviconFailureStorage = storage.defineItem<string[]>('session:faviconFetchFailures', {
@@ -496,7 +514,10 @@ async function probeViaImageElement(pageUrl: string): Promise<string | null> {
  * 返回值为 base64 数据 URL 或普通 URL（可通过前缀 'data:' 判断）。
  * 若完全不可用则返回 null（调用方应展示兜底图标）。
  */
-export async function fetchFaviconWithCache(pageUrl: string): Promise<string | null> {
+export async function fetchFaviconWithCache(
+  pageUrl: string,
+  allowChromiumNativeFallback = false,
+): Promise<string | null> {
   // 启动预热期间的所有消费者共用同一个批量读取，避免退化为逐条 IndexedDB 查询。
   if (faviconHydrationTask) await faviconHydrationTask
 
@@ -504,7 +525,11 @@ export async function fetchFaviconWithCache(pageUrl: string): Promise<string | n
   if (!origin) return null
 
   await hydrateFaviconFailures()
-  if (failedFaviconKeys.has(faviconFailureKey(origin))) return null
+  if (failedFaviconKeys.has(faviconFailureKey(origin))) {
+    return allowChromiumNativeFallback && _cacheEnabled && isChromium
+      ? fetchViaChromeFaviconApi(pageUrl)
+      : null
+  }
 
   const l1 = l1Get(origin)
   if (l1) {
@@ -524,7 +549,7 @@ export async function fetchFaviconWithCache(pageUrl: string): Promise<string | n
     }
   }
 
-  return await doFetch(pageUrl, origin)
+  return await doFetch(pageUrl, origin, allowChromiumNativeFallback)
 }
 
 /** 后台异步刷新（不等待结果） */
@@ -533,17 +558,23 @@ function refreshInBackground(pageUrl: string, origin: string): void {
 }
 
 /** 对指定 origin 执行完整抓取（已去重）。 */
-async function doFetch(pageUrl: string, origin: string): Promise<string | null> {
+async function doFetch(
+  pageUrl: string,
+  origin: string,
+  allowChromiumNativeFallback = false,
+): Promise<string | null> {
   // 去重处理
-  const existing = pendingFetches.get(origin)
+  const pendingKey = `${origin}:${allowChromiumNativeFallback}`
+  const existing = pendingFetches.get(pendingKey)
   if (existing) return existing
 
   const generationAtStart = cacheGeneration
   const cacheEnabledAtStart = _cacheEnabled
 
-  const promise = (async (): Promise<string | null> => {
+  const promise = withFetchSlot(async (): Promise<string | null> => {
     let data: string | null = null
     let type: 'base64' | 'url' = 'base64'
+    let usedChromiumNativeFallback = false
 
     // 缓存关闭时优先复用浏览器已经拥有的图标，避免每次新标签页都重新发起网络请求。
     if (!_cacheEnabled && isChromium) {
@@ -571,21 +602,28 @@ async function doFetch(pageUrl: string, origin: string): Promise<string | null> 
       if (data) type = 'url'
     }
 
-    if (data && generationAtStart === cacheGeneration) {
+    // 缓存开启时，所有常规策略都失败且未启用标题首字母兜底，才使用 Chromium
+    // 自带的图标。该结果只用于当前展示，不能写入任意一级缓存。
+    if (!data && cacheEnabledAtStart && allowChromiumNativeFallback && isChromium) {
+      data = await fetchViaChromeFaviconApi(pageUrl)
+      usedChromiumNativeFallback = Boolean(data)
+    }
+
+    if (data && !usedChromiumNativeFallback && generationAtStart === cacheGeneration) {
       const entry: FaviconCacheEntry = { data, type, fetchedAt: Date.now() }
       await writeFaviconCacheEntry(origin, entry, generationAtStart)
-    } else if (!data) {
+    } else if (!data && !usedChromiumNativeFallback) {
       rememberFaviconFailure(origin, cacheEnabledAtStart)
     }
 
     return data
-  })()
+  })
 
-  pendingFetches.set(origin, promise)
+  pendingFetches.set(pendingKey, promise)
   try {
     return await promise
   } finally {
-    if (pendingFetches.get(origin) === promise) pendingFetches.delete(origin)
+    if (pendingFetches.get(pendingKey) === promise) pendingFetches.delete(pendingKey)
   }
 }
 
@@ -634,18 +672,20 @@ export async function warmFaviconCache(
 
       if (hasHostPerm) {
         try {
-          const targetUrl = new URL(faviconData, pageUrl)
-          const resp = await fetch(targetUrl, { signal: AbortSignal.timeout(5000) })
-          if (resp.ok) {
-            const contentType = resp.headers.get('content-type') ?? ''
-            if (!contentType.startsWith('text/') && !contentType.includes('html')) {
-              const blob = await resp.blob()
-              if (blob.size > 0) {
-                finalData = await blobToDataURL(blob)
-                finalType = 'base64'
+          await withFetchSlot(async () => {
+            const targetUrl = new URL(faviconData, pageUrl)
+            const resp = await fetch(targetUrl, { signal: AbortSignal.timeout(5000) })
+            if (resp.ok) {
+              const contentType = resp.headers.get('content-type') ?? ''
+              if (!contentType.startsWith('text/') && !contentType.includes('html')) {
+                const blob = await resp.blob()
+                if (blob.size > 0) {
+                  finalData = await blobToDataURL(blob)
+                  finalType = 'base64'
+                }
               }
             }
-          }
+          })
         } catch {
           // 直接抓取失败则忽略，回落使用传入的 URL
         }
