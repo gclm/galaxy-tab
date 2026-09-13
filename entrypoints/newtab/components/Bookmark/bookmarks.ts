@@ -218,7 +218,8 @@ export const useBookmarkStore = defineStore('bookmark', () => {
       const node = getBookmarkNode(id)
       if (!node) throw new Error(`Unknown bookmark result: ${id}`)
       if (!node.children && !children) return node
-      const { children: _children, ...fields } = node
+      const fields = { ...node }
+      delete fields.children
       return children ? { ...fields, children: materializeResult(children) } : fields
     })
 

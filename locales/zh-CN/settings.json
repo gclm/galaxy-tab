@@ -71,7 +71,6 @@
       "cacheDisabled": "由于未授予「访问所有网站」权限，无法安全缓存在线壁纸，故已将「在线壁纸缓存」关闭。",
       "fileIsNotImage": "所选文件不是图片！",
       "invalidUrl": "请输入有效的 HTTP(S) 壁纸地址。",
-      "monetColorDisabled": "莫奈取色已关闭",
       "monetDisabled": "由于未授予「访问所有网站」权限，动态主题色（莫奈取色）已被关闭",
       "notGranted": "未授予权限，无法访问该地址",
       "title": "警告",
@@ -182,7 +181,6 @@
       "general": "常规",
       "layout": "布局与间距",
       "position": "页面位置",
-      "quickActions": "快捷开关",
       "radius": "圆角",
       "source": "内容来源",
       "summary": {
@@ -196,7 +194,6 @@
         "general": "常用设置",
         "layout": "尺寸、数量与间距",
         "position": "主区域与功能按钮",
-        "quickActions": "批量开启或关闭效果",
         "radius": "集中调整各组件圆角",
         "source": "来源与自定义内容"
       }

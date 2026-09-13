@@ -71,7 +71,6 @@
       "cacheDisabled": "Online wallpaper caching has been disabled because the “Access all websites” permission was not granted.",
       "fileIsNotImage": "The selected file is not an image!",
       "invalidUrl": "Enter a valid HTTP(S) wallpaper URL.",
-      "monetColorDisabled": "Monet color extraction disabled",
       "monetDisabled": "Dynamic Theme Colors (Monet Extraction) has been disabled because “Access all sites” permission was not granted.",
       "notGranted": "Permission not granted, cannot access this host.",
       "title": "Warning",
@@ -182,7 +181,6 @@
       "general": "General",
       "layout": "Layout and spacing",
       "position": "Page position",
-      "quickActions": "Quick controls",
       "radius": "Corner radius",
       "source": "Content source",
       "summary": {
@@ -196,7 +194,6 @@
         "general": "Frequently used options",
         "layout": "Sizing, counts, and spacing",
         "position": "Main content and action buttons",
-        "quickActions": "Enable or disable effects in bulk",
         "radius": "Adjust component corners in one place",
         "source": "Providers and custom content"
       }

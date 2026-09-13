@@ -71,7 +71,6 @@
       "cacheDisabled": "Çevrimiçi duvar kağıdı önbelleği, \"Tüm web sitelerine erişim\" izni verilmediği için devre dışı bırakıldı.",
       "fileIsNotImage": "Seçilen dosya bir resim değil!",
       "invalidUrl": "Geçerli bir HTTP(S) duvar kâğıdı URL'si girin.",
-      "monetColorDisabled": "Monet renk çıkarma devre dışı",
       "monetDisabled": "Dinamik Tema Renkleri (Monet Çıkarma), \"Tüm sitelere erişim\" izni verilmediği için devre dışı bırakıldı.",
       "notGranted": "İzin verilmedi, bu ana bilgisayara erişilemiyor.",
       "title": "Uyarı",
@@ -182,7 +181,6 @@
       "general": "Genel",
       "layout": "Düzen ve boşluk",
       "position": "Sayfa konumu",
-      "quickActions": "Hızlı kontroller",
       "radius": "Köşe yarıçapı",
       "source": "İçerik kaynağı",
       "summary": {
@@ -196,7 +194,6 @@
         "general": "Sık kullanılan seçenekler",
         "layout": "Boyutlandırma, sayılar ve boşluk",
         "position": "Ana içerik ve eylem düğmeleri",
-        "quickActions": "Efektleri toplu olarak etkinleştirin veya devre dışı bırakın",
         "radius": "Bileşen köşelerini tek bir yerden ayarlayın",
         "source": "Sağlayıcılar ve özel içerik"
       }
