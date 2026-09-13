@@ -6,7 +6,7 @@ const props = defineProps<{
   text: string
   active: boolean
   icon?: Component
-  muted?: boolean
+  prefix?: string
 }>()
 
 const emit = defineEmits<{
@@ -22,7 +22,7 @@ const emit = defineEmits<{
     class="search-suggestion-area__item noselect"
     :class="{
       'search-suggestion-area__item--active': active,
-      'search-suggestion-area__item--muted': muted,
+      'search-suggestion-area__item--action': prefix,
     }"
     role="option"
     :aria-selected="active"
@@ -30,7 +30,10 @@ const emit = defineEmits<{
     @mouseover="emit('hover')"
     @mouseout="emit('leave')"
   >
-    <el-icon v-if="icon" class="search-suggestion-area__item-icon"><component :is="icon" /></el-icon>
+    <el-icon v-if="icon" class="search-suggestion-area__item-icon">
+      <component :is="icon" />
+    </el-icon>
+    <span v-if="prefix" class="search-suggestion-area__item-prefix">{{ prefix }}&nbsp;</span>
     <span class="search-suggestion-area__item-text">{{ props.text }}</span>
   </div>
 </template>

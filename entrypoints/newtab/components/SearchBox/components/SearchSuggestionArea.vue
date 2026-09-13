@@ -377,15 +377,15 @@ defineExpose({
       v-for="(item, index) in displayedSuggestions"
       :key="index"
       :id="`${listId}-option-${index}`"
-      :text="
+      :text="item.text"
+      :prefix="
         item.action === 'navigate'
-          ? t('newtab:search.navigateTo', { url: item.text })
+          ? t('newtab:search.navigateTo')
           : item.action === 'search'
-            ? t('newtab:search.searchFor', { text: item.text })
-            : item.text
+            ? t('newtab:search.searchFor')
+            : undefined
       "
       :icon="item.action === 'navigate' ? Globe : item.action === 'search' ? Search : undefined"
-      :muted="item.action !== 'suggest'"
       :active="currentActiveSuggest === index"
       @click="
         item.action === 'navigate' && navigableUrl
@@ -443,15 +443,15 @@ defineExpose({
   }
 
   &__item {
-    display: -webkit-box;
+    display: flex;
     align-items: center;
     height: 33px;
     padding: 0 30px;
     overflow: hidden;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
     line-height: 33px;
     color: var(--el-text-color-primary);
+    white-space: nowrap;
     cursor: pointer;
     background-color: transparent;
     transition:
@@ -464,8 +464,11 @@ defineExpose({
       background-color: var(--le-bg-color-overlay-search-subtle);
     }
 
-    &--muted {
-      color: var(--el-text-color-secondary);
+    &--action {
+      .search-suggestion-area__item-icon,
+      .search-suggestion-area__item-prefix {
+        color: var(--el-text-color-secondary);
+      }
     }
 
     &-icon {
@@ -473,7 +476,13 @@ defineExpose({
       margin-right: 8px;
     }
 
+    &-prefix {
+      flex: none;
+    }
+
     &-text {
+      flex: 1;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
