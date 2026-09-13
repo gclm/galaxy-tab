@@ -101,10 +101,16 @@ async function prepareBitmap(image: HTMLImageElement, cropCenter = false): Promi
   })
 }
 
-export function extractMonetColors(image: HTMLImageElement, cropCenter = false): Promise<MonetPalette> {
+export function extractMonetColors(
+  image: HTMLImageElement,
+  cropCenter = false,
+): Promise<MonetPalette> {
   const id = msgId++
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => disposeMonetWorker(new Error('Monet extraction timed out')), 10_000)
+    const timer = setTimeout(
+      () => disposeMonetWorker(new Error('Monet extraction timed out')),
+      10_000,
+    )
     pending.set(id, { resolve, reject, timer })
     void prepareBitmap(image, cropCenter)
       .then((bitmap) => {

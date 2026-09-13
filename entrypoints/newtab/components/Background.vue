@@ -445,7 +445,11 @@ const backgroundSource = computed(() => {
   }
   return JSON.stringify([
     type,
-    type === BgType.Bing ? bingUrl.value : type === BgType.Online ? settings.background.online.url : '',
+    type === BgType.Bing
+      ? bingUrl.value
+      : type === BgType.Online
+        ? settings.background.online.url
+        : '',
   ])
 })
 

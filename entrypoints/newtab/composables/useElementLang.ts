@@ -12,8 +12,7 @@ async function loadElementLocale(lng: string): Promise<Language> {
   const localeNames = [normalizedLocale, normalizedLocale.split('-')[0], 'en']
 
   for (const localeName of localeNames) {
-    const loader =
-      elementLocales[`/node_modules/element-plus/es/locale/lang/${localeName}.mjs`]
+    const loader = elementLocales[`/node_modules/element-plus/es/locale/lang/${localeName}.mjs`]
     if (loader) return (await loader()).default
   }
 

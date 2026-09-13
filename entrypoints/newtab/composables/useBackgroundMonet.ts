@@ -1,6 +1,10 @@
 import { BgType } from '@/shared/enums'
 import { useSettingsStore } from '@/shared/settings'
-import { applyStoredMonetColors, getMonetColors, saveMonetColors } from '@/shared/theme/monetStorage'
+import {
+  applyStoredMonetColors,
+  getMonetColors,
+  saveMonetColors,
+} from '@/shared/theme/monetStorage'
 
 import { runAfterFirstPaint } from '@newtab/shared/schedule'
 import { disposeMonetWorker, extractMonetColors } from '@newtab/shared/theme'

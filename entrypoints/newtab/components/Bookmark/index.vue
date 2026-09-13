@@ -252,7 +252,9 @@ provide(BOOKMARK_OPENED_MENU_CLOSE_FN, openedMenuCloseFn)
 
 watch(
   [searchQuery, () => store.sortMode],
-  () => { preserveMoveView = false },
+  () => {
+    preserveMoveView = false
+  },
   { flush: 'sync' },
 )
 

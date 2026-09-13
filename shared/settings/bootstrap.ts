@@ -2,10 +2,10 @@ import { browser } from '#imports'
 
 export async function isSettingsCompatible(): Promise<boolean> {
   const storedSettings: {
-    'settings$': { v?: number } | null
+    settings$: { v?: number } | null
     settings: { version: string | number | null; [key: string]: unknown }
   } = await browser.storage.local.get({
-    'settings$': null,
+    settings$: null,
     settings: { version: null },
   })
 

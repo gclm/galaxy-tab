@@ -410,22 +410,24 @@ export const useBookmarkStore = defineStore('bookmark', () => {
       return loadTask
     }
     hasNativeSnapshot = false
-    const task = Promise.resolve().then(async () => {
-      if (loadTask !== task) return
-      forceNative ||= reloadRequested
-      do {
-        reloadRequested = false
-        try {
-          await readBookmarks(forceNative)
-        } catch (error) {
-          // 读取失败期间若又收到变更，仍完成已请求的原生刷新。
-          if (!reloadRequested || loadTask !== task) throw error
-        }
-        forceNative = true
-      } while (reloadRequested && loadTask === task)
-    }).finally(() => {
-      if (loadTask === task) loadTask = null
-    })
+    const task = Promise.resolve()
+      .then(async () => {
+        if (loadTask !== task) return
+        forceNative ||= reloadRequested
+        do {
+          reloadRequested = false
+          try {
+            await readBookmarks(forceNative)
+          } catch (error) {
+            // 读取失败期间若又收到变更，仍完成已请求的原生刷新。
+            if (!reloadRequested || loadTask !== task) throw error
+          }
+          forceNative = true
+        } while (reloadRequested && loadTask === task)
+      })
+      .finally(() => {
+        if (loadTask === task) loadTask = null
+      })
     loadTask = task
     return task
   }

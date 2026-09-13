@@ -19,6 +19,7 @@ import { browser, type Browser } from 'wxt/browser'
 import { getFaviconURL } from '@/shared/media'
 import { useQuickLinksStore } from '@/shared/quickLinks'
 
+import { openUrlInIncognitoWindow } from '@newtab/shared/incognito'
 import {
   BOOKMARK_ACTIVE_MAP,
   BOOKMARK_OPENED_MENU_CLOSE_FN,
@@ -26,7 +27,6 @@ import {
   OPEN_BOOKMARK_EDIT_DIALOG,
   OPEN_QUICK_LINK_GROUP_SELECT_DIALOG,
 } from '@newtab/shared/keys'
-import { openUrlInIncognitoWindow } from '@newtab/shared/incognito'
 import { isHasTouchDevice, isTouchEvent } from '@newtab/shared/touch'
 import { isSafeUrl, isValidUrl } from '@newtab/shared/utils'
 

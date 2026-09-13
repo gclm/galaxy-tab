@@ -386,7 +386,10 @@ self.onmessage = (e: MessageEvent) => {
   }
 }
 
-function postResult(type: string, payload: { query: string; sortMode: SortMode; requestId: number }) {
+function postResult(
+  type: string,
+  payload: { query: string; sortMode: SortMode; requestId: number },
+) {
   const result = filter(payload.query, payload.sortMode)
   self.postMessage({
     type,

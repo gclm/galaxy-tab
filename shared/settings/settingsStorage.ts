@@ -65,14 +65,14 @@ async function getCurrentSettings() {
     )
     await browser.storage.local.set({
       settings: repaired,
-      'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
+      settings$: { ...metadata, v: CURRENT_CONFIG_VERSION },
     })
     return { value: repaired, metadata: { ...metadata, v: CURRENT_CONFIG_VERSION } }
   }
 
   if (value.version === CURRENT_CONFIG_VERSION && metadataVersion !== CURRENT_CONFIG_VERSION) {
     await browser.storage.local.set({
-      'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
+      settings$: { ...metadata, v: CURRENT_CONFIG_VERSION },
     })
     return { value, metadata: { ...metadata, v: CURRENT_CONFIG_VERSION } }
   }
@@ -96,7 +96,7 @@ export const settingsStorage = {
     const { metadata } = await getCurrentSettings()
     await browser.storage.local.set({
       settings: value,
-      'settings$': { ...metadata, v: CURRENT_CONFIG_VERSION },
+      settings$: { ...metadata, v: CURRENT_CONFIG_VERSION },
     })
   },
 }

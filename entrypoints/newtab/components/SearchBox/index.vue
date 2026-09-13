@@ -30,6 +30,7 @@ import SearchEngineMenu from './components/SearchEngineMenu.vue'
 import SearchSuggestionArea from './components/SearchSuggestionArea.vue'
 
 type SearchSuggestionAreaController = {
+  clearActiveSuggest: () => void
   clearSearchSuggestions: () => void
   showSearchHistories: () => Promise<void>
   handleInput: () => void
@@ -37,7 +38,7 @@ type SearchSuggestionAreaController = {
     direction: number,
     currentText: string,
     originText: string | null,
-  ) => { searchText: string; originSearchText: string } | null
+  ) => { searchText: string; originSearchText: string | null } | null
   submitActiveSuggest: () => boolean
 }
 
@@ -96,7 +97,7 @@ const searchPlaceholder = computed(() =>
 
 function resetSearch() {
   searchText.value = ''
-  originSearchText.value = ''
+  originSearchText.value = null
   suggestionArea.value?.clearSearchSuggestions()
   searchForm.value?.classList.remove('search-box__form--focus')
   focusStore.blur()
@@ -147,6 +148,8 @@ function handleInput() {
   if (isComposing.value) {
     return
   }
+  originSearchText.value = null
+  suggestionArea.value?.clearActiveSuggest()
   suggestionArea.value?.handleInput()
 }
 

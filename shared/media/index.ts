@@ -145,7 +145,9 @@ export function getFaviconDisplay(
     if (currentSeq !== seq) return
     if (useCachedFavicon()) return
 
-    const favicon = await fetchFaviconWithCache(u, unref(allowChromiumNativeFallback)).catch(() => null)
+    const favicon = await fetchFaviconWithCache(u, unref(allowChromiumNativeFallback)).catch(
+      () => null,
+    )
     if (currentSeq !== seq) return
     if (!favicon || !(await preloadFavicon(favicon)) || currentSeq !== seq) {
       if (currentSeq === seq) {

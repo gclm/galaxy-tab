@@ -107,7 +107,8 @@ export default function useBackgroundSwitcher() {
     let url: URL
     try {
       url = new URL(_url)
-      if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new TypeError('Unsupported URL')
+      if (url.protocol !== 'http:' && url.protocol !== 'https:')
+        throw new TypeError('Unsupported URL')
     } catch {
       tempOnlineUrl.value = settings.background.online.url
       ElMessage.error(i18next.t('settings:background.warning.invalidUrl'))

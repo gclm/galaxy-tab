@@ -1,5 +1,6 @@
-import { CURRENT_CONFIG_VERSION, type CURRENT_CONFIG_SCHEMA } from './current'
 import { migrateWallpaperLibrary } from '../wallpaperLibrary'
+
+import { CURRENT_CONFIG_VERSION, type CURRENT_CONFIG_SCHEMA } from './current'
 import {
   migrateFromVer10To11,
   migrateFromVer7To8,

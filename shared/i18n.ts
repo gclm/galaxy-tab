@@ -55,22 +55,25 @@ export async function initI18n() {
   const uiPreferences = await getUiPreferences()
   // 检测用户语言
   // 参考: https://github.com/i18next/i18next-browser-languageDetector
-  await i18next.use(languageDetector).use(resourceBackend).init({
-    lng: uiPreferences.language,
-    fallbackLng: {
-      'zh-MO': ['zh-HK'],
-      zh: ['zh-CN'],
-      default: ['en'],
-    },
-    load: 'currentOnly',
-    nonExplicitSupportedLngs: true,
-    ns: ['newtab', 'settings', 'faq', 'popup'],
-    defaultNS: 'newtab',
-    debug: import.meta.env.DEV,
-    interpolation: {
-      escapeValue: false,
-    },
-  })
+  await i18next
+    .use(languageDetector)
+    .use(resourceBackend)
+    .init({
+      lng: uiPreferences.language,
+      fallbackLng: {
+        'zh-MO': ['zh-HK'],
+        zh: ['zh-CN'],
+        default: ['en'],
+      },
+      load: 'currentOnly',
+      nonExplicitSupportedLngs: true,
+      ns: ['newtab', 'settings', 'faq', 'popup'],
+      defaultNS: 'newtab',
+      debug: import.meta.env.DEV,
+      interpolation: {
+        escapeValue: false,
+      },
+    })
 
   // Windows 不能正确区分 zh-HK 和 zh-TW，把所有繁体中文都当作 zh-TW
   if (i18next.language === 'zh-TW' && isHKorMO()) {
