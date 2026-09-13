@@ -78,7 +78,11 @@ const displayedSuggestions = computed<DisplayedSuggestion[]>(() => {
   return calculationResult.value === null
     ? suggestions
     : [
-        { action: 'calculate', text: String(calculationResult.value), inputText: actionSourceText.value },
+        {
+          action: 'calculate',
+          text: String(calculationResult.value),
+          inputText: actionSourceText.value,
+        },
         ...suggestions,
       ]
 })

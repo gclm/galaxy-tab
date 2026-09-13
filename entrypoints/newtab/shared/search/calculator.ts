@@ -4,7 +4,10 @@ type Token =
   | { type: 'leftParen' | 'rightParen' }
 
 function tokenize(input: string): Token[] | null {
-  const text = input.trim().replace(/\s+/g, '').replace(/[×÷]/g, (operator) => (operator === '×' ? '*' : '/'))
+  const text = input
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[×÷]/g, (operator) => (operator === '×' ? '*' : '/'))
   const expression = text.endsWith('=') ? text.slice(0, -1) : text
   if (!expression || expression.includes('=')) return null
 
@@ -25,7 +28,13 @@ function tokenize(input: string): Token[] | null {
     }
 
     const character = expression[index]
-    if (character === '+' || character === '-' || character === '*' || character === '/' || character === '^')
+    if (
+      character === '+' ||
+      character === '-' ||
+      character === '*' ||
+      character === '/' ||
+      character === '^'
+    )
       tokens.push({ type: 'operator', value: character })
     else if (character === '(') tokens.push({ type: 'leftParen' })
     else if (character === ')') tokens.push({ type: 'rightParen' })
