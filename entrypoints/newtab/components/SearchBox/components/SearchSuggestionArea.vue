@@ -138,13 +138,6 @@ function handleInput(text?: string) {
 }
 
 watch(
-  () => props.searchText,
-  (newText) => {
-    handleInput(newText)
-  },
-)
-
-watch(
   () => focusStore.isFocused,
   (isFocused) => {
     if (isFocused) {
@@ -261,15 +254,12 @@ function showSuggestionsDebounced(queryText?: string) {
   }, 250)
 }
 
-watch(
-  [() => settings.search.suggestionAPI, () => settings.search.suggestionsEnabled],
-  () => {
-    cancelSuggestionRequest()
-    if (!props.searchText.trim()) return
-    clearSearchSuggestions()
-    if (focusStore.isFocused) showSuggestionsDebounced()
-  },
-)
+watch([() => settings.search.suggestionAPI, () => settings.search.suggestionsEnabled], () => {
+  cancelSuggestionRequest()
+  if (!props.searchText.trim()) return
+  clearSearchSuggestions()
+  if (focusStore.isFocused) showSuggestionsDebounced()
+})
 
 onUnmounted(() => {
   cancelSuggestionRequest()
@@ -294,7 +284,8 @@ function submitActiveSuggest() {
   if (index === null) return false
   const item = displayedSuggestions.value[index]
   if (!item) return false
-  if (item.action === 'navigate' && navigableUrl.value) emit('navigateToUrl', navigableUrl.value.url)
+  if (item.action === 'navigate' && navigableUrl.value)
+    emit('navigateToUrl', navigableUrl.value.url)
   else emit('doSearchWithText', item.text)
   return true
 }
@@ -338,7 +329,7 @@ function navigateActiveSuggest(direction: number, currentText: string, originTex
   if (newIndex < 0 || newIndex >= suggestionsLength) {
     return {
       searchText: nextOriginText || '',
-      originSearchText: '',
+      originSearchText: null,
     }
   }
 
@@ -359,6 +350,7 @@ watch(activeOptionId, (id) => emit('activeOptionChange', id), { immediate: true 
 watch(isExpanded, (expanded) => emit('expandedChange', expanded), { immediate: true })
 
 defineExpose({
+  clearActiveSuggest,
   clearSearchSuggestions,
   hideSearchHistories,
   showSearchHistories,
