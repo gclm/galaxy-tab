@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useTranslation } from 'i18next-vue'
+import Calculator from '~icons/fa6-solid/calculator'
 import Globe from '~icons/fa6-solid/earth-americas'
 import Search from '~icons/fa6-solid/magnifying-glass'
 import TrashAlt from '~icons/fa6-solid/trash-can'
@@ -11,6 +12,7 @@ import { useFocusState } from '@newtab/composables/useFocus'
 import usePerfClasses from '@newtab/composables/usePerfClasses'
 import { useSearchHistoryCache } from '@newtab/composables/useSearchHistoryCache'
 import { searchSuggestAPIs, searchSuggestCache } from '@newtab/shared/search'
+import { calculateExpression } from '@newtab/shared/search/calculator'
 import { parseNavigableUrl } from '@newtab/shared/search/url'
 
 import SuggestListItem from './SuggestListItem.vue'
@@ -27,6 +29,7 @@ const {
 
 const isShowSearchHistories = ref(false)
 const currentActiveSuggest = ref<null | number>(null)
+const navigationSourceText = ref<string | null>(null)
 const searchSuggestions = shallowRef<string[]>([])
 // 用于追踪当前展示的结果是否仍然有效，避免旧请求覆盖新结果
 const latestLiveQuery = ref('')
@@ -48,20 +51,36 @@ const emit = defineEmits<{
   expandedChange: [expanded: boolean]
 }>()
 
-type DisplayedSuggestion = { action: 'navigate' | 'search' | 'suggest'; text: string }
+type DisplayedSuggestion = {
+  action: 'calculate' | 'navigate' | 'search' | 'suggest'
+  text: string
+  inputText?: string
+}
 
-const navigableUrl = computed(() => parseNavigableUrl(props.searchText))
+const actionSourceText = computed(() => navigationSourceText.value ?? props.searchText)
+const navigableUrl = computed(() => parseNavigableUrl(actionSourceText.value))
+const calculationResult = computed(() => calculateExpression(actionSourceText.value))
+const shouldSuppressSearchSuggestions = computed(
+  () => calculationResult.value !== null && actionSourceText.value.trim().endsWith('='),
+)
 const displayedSuggestions = computed<DisplayedSuggestion[]>(() => {
-  const suggestions = searchSuggestions.value.slice(0, navigableUrl.value ? 8 : 10).map((text) => ({
+  const actionCount = navigableUrl.value ? 2 : calculationResult.value === null ? 0 : 1
+  const suggestions = searchSuggestions.value.slice(0, 10 - actionCount).map((text) => ({
     action: 'suggest' as const,
     text,
   }))
-  if (!navigableUrl.value) return suggestions
-  return [
-    { action: 'navigate', text: navigableUrl.value.text },
-    { action: 'search', text: navigableUrl.value.text },
-    ...suggestions,
-  ]
+  if (navigableUrl.value)
+    return [
+      { action: 'navigate', text: navigableUrl.value.text },
+      { action: 'search', text: navigableUrl.value.text },
+      ...suggestions,
+    ]
+  return calculationResult.value === null
+    ? suggestions
+    : [
+        { action: 'calculate', text: String(calculationResult.value), inputText: actionSourceText.value },
+        ...suggestions,
+      ]
 })
 
 const perf = usePerfClasses(() => ({
@@ -133,7 +152,8 @@ function handleInput(text?: string) {
     void showSearchHistories()
   } else if (query) {
     hideSearchHistories()
-    showSuggestionsDebounced(query)
+    if (shouldSuppressSearchSuggestions.value) clearSearchSuggestions()
+    else showSuggestionsDebounced(query)
   }
 }
 
@@ -142,7 +162,8 @@ watch(
   (isFocused) => {
     if (isFocused) {
       if (props.searchText.trim()) {
-        showSuggestionsDebounced(props.searchText.trim())
+        if (shouldSuppressSearchSuggestions.value) clearSearchSuggestions()
+        else showSuggestionsDebounced(props.searchText.trim())
       } else {
         void showSearchHistories()
       }
@@ -258,15 +279,16 @@ watch([() => settings.search.suggestionAPI, () => settings.search.suggestionsEna
   cancelSuggestionRequest()
   if (!props.searchText.trim()) return
   clearSearchSuggestions()
-  if (focusStore.isFocused) showSuggestionsDebounced()
+  if (focusStore.isFocused && !shouldSuppressSearchSuggestions.value) showSuggestionsDebounced()
 })
 
 onUnmounted(() => {
   cancelSuggestionRequest()
 })
 
-function clearActiveSuggest() {
+function clearActiveSuggest(resetNavigationSource = true) {
   currentActiveSuggest.value = null
+  if (resetNavigationSource) navigationSourceText.value = null
 }
 
 function activateSuggest(index: number): string | null {
@@ -276,7 +298,7 @@ function activateSuggest(index: number): string | null {
   }
 
   currentActiveSuggest.value = index
-  return nextItem.text
+  return nextItem.inputText ?? nextItem.text
 }
 
 function submitActiveSuggest() {
@@ -284,6 +306,7 @@ function submitActiveSuggest() {
   if (index === null) return false
   const item = displayedSuggestions.value[index]
   if (!item) return false
+  if (item.action === 'calculate') return false
   if (item.action === 'navigate' && navigableUrl.value)
     emit('navigateToUrl', navigableUrl.value.url)
   else emit('doSearchWithText', item.text)
@@ -300,6 +323,7 @@ function clearSearchSuggestions() {
   latestLiveQuery.value = ''
   hideSearchHistories()
   currentActiveSuggest.value = null
+  navigationSourceText.value = null
   searchSuggestions.value = []
 }
 
@@ -317,7 +341,8 @@ function navigateActiveSuggest(direction: number, currentText: string, originTex
   const previousIndex = currentActiveSuggest.value
   const nextOriginText = originText === null ? currentText : originText
 
-  clearActiveSuggest()
+  if (previousIndex === null) navigationSourceText.value = nextOriginText
+  clearActiveSuggest(false)
 
   if (previousIndex === null) {
     const nextIndex = direction > 0 ? direction - 1 : suggestionsLength + direction
@@ -327,6 +352,7 @@ function navigateActiveSuggest(direction: number, currentText: string, originTex
 
   const newIndex = previousIndex + direction
   if (newIndex < 0 || newIndex >= suggestionsLength) {
+    navigationSourceText.value = null
     return {
       searchText: nextOriginText || '',
       originSearchText: null,
@@ -379,18 +405,28 @@ defineExpose({
       :id="`${listId}-option-${index}`"
       :text="item.text"
       :prefix="
-        item.action === 'navigate'
-          ? t('newtab:search.navigateTo')
-          : item.action === 'search'
-            ? t('newtab:search.searchFor')
-            : undefined
+        item.action === 'calculate'
+          ? t('newtab:search.calculationResult')
+          : item.action === 'navigate'
+            ? t('newtab:search.navigateTo')
+            : item.action === 'search'
+              ? t('newtab:search.searchFor')
+              : undefined
       "
-      :icon="item.action === 'navigate' ? Globe : item.action === 'search' ? Search : undefined"
+      :icon="
+        item.action === 'calculate'
+          ? Calculator
+          : item.action === 'navigate'
+            ? Globe
+            : item.action === 'search'
+              ? Search
+              : undefined
+      "
       :active="currentActiveSuggest === index"
       @click="
         item.action === 'navigate' && navigableUrl
           ? emit('navigateToUrl', navigableUrl.url)
-          : emit('doSearchWithText', item.text)
+          : item.action !== 'calculate' && emit('doSearchWithText', item.text)
       "
       @hover="currentActiveSuggest = index"
       @leave="currentActiveSuggest = currentActiveSuggest === index ? null : currentActiveSuggest"
@@ -467,7 +503,7 @@ defineExpose({
     &--action {
       .search-suggestion-area__item-icon,
       .search-suggestion-area__item-prefix {
-        color: var(--el-text-color-secondary);
+        color: var(--el-text-color-regular);
       }
     }
 
