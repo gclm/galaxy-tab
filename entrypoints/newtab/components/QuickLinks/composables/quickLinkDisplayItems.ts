@@ -3,6 +3,7 @@ import type { TopSites } from 'webextension-polyfill'
 import type { QuickLink, QuickLinkGroup } from '@/shared/quickLinks'
 
 export interface QuickLinkDisplayItem {
+  id?: string
   url: string
   title: string
   favicon?: string
@@ -22,6 +23,7 @@ export function buildQuickLinkDisplayItems(
   for (let i = 0; i < quickLinksLen; i++) {
     const site = quickLinks[i]!
     result[i] = {
+      id: site.id,
       url: site.url,
       title: site.title,
       favicon: site.favicon,
@@ -50,6 +52,7 @@ export function buildQuickLinkGroupItems(group: QuickLinkGroup): QuickLinkDispla
   for (let i = 0, len = group.items.length; i < len; i++) {
     const item = group.items[i]!
     result[i] = {
+      id: item.id,
       url: item.url,
       title: item.title,
       favicon: item.favicon,

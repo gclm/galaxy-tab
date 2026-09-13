@@ -20,6 +20,7 @@ export type QuickLinkDndSource = 'quick-links' | 'launchpad'
 export type QuickLinkDndData =
   | {
       kind: 'quick-link'
+      id?: string
       source: QuickLinkDndSource
       groupId: string
       sortableIndex: number
@@ -199,6 +200,17 @@ function createQuickLinkDndSensors() {
 }
 
 export const quickLinkDndSensors = createQuickLinkDndSensors()
+
+export const virtualQuickLinkDndSensors = [
+  quickLinkDndSensors[0]!,
+  KeyboardSensor.configure({
+    // 焦点位于真实链接内容，而不是外层拖拽包装；Enter 仍交给链接打开。
+    preventActivation: (event, source) =>
+      event.code !== 'Space' ||
+      !(event.target instanceof Node) ||
+      !source.element?.contains(event.target),
+  }),
+]
 
 export const launchpadDndSensors = createQuickLinkDndSensors()
 

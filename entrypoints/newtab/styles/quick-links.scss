@@ -577,7 +577,7 @@ html.light .quick-links {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
+  min-width: 100%;
   touch-action: manipulation;
 
   &--dragging {

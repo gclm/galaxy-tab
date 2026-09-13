@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDraggable, useDroppable } from '@dnd-kit/vue'
 import { useSortable } from '@dnd-kit/vue/sortable'
 
 import {
@@ -18,6 +19,7 @@ const props = withDefaults(
     accept?: string | string[]
     disabled?: SortableDisabled
     data: QuickLinkDndData
+    manual?: boolean
   }>(),
   {
     type: 'quick-link',
@@ -32,7 +34,7 @@ const emit = defineEmits<{
 const elementRef = ref<HTMLElement | null>(null)
 let suppressClickUntil = 0
 
-const { isDragging, isDropTarget } = useSortable({
+const input = {
   id: computed(() => props.id),
   index: computed(() => props.index),
   group: computed(() => props.group),
@@ -46,7 +48,24 @@ const { isDragging, isDropTarget } = useSortable({
     duration: 150,
     easing: 'ease',
   },
-})
+}
+// 虚拟网格只使用基础拖拽，避免乐观排序把部分挂载集合重新编号。
+const { isDragging, isDropTarget } = props.manual
+  ? {
+      ...useDraggable({
+        ...input,
+        disabled: computed(() =>
+          typeof props.disabled === 'object' ? props.disabled.draggable : props.disabled,
+        ),
+      }),
+      ...useDroppable({
+        ...input,
+        disabled: computed(() =>
+          typeof props.disabled === 'object' ? props.disabled.droppable : props.disabled,
+        ),
+      }),
+    }
+  : useSortable(input)
 
 function handleTouchContextMenu(event: Event) {
   const nativeEvent = (event as CustomEvent<{ event?: PointerEvent }>).detail?.event

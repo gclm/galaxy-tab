@@ -18,6 +18,7 @@ const props = defineProps<{
   favicon?: string
   presentation: QuickLinkItemPresentation
   onContextMenu?: (event: MouseEvent | PointerEvent) => void
+  keyboardDrag?: boolean
 }>()
 
 const settings = useSettingsStore()
@@ -42,6 +43,8 @@ const showTitleInitialFallback = computed(
 const safeUrl = computed(() => (isValidUrl(props.url) ? props.url : '#'))
 
 function openFocusedLink(event: KeyboardEvent) {
+  if (event.code === 'Space' && props.keyboardDrag) return
+  event.preventDefault()
   const link = (event.currentTarget as HTMLElement | null)?.querySelector('a')
   link?.click()
 }
@@ -55,7 +58,7 @@ function openFocusedLink(event: KeyboardEvent) {
     :aria-label="title"
     :title="title"
     @keydown.enter.prevent="openFocusedLink"
-    @keydown.space.prevent="openFocusedLink"
+    @keydown.space="openFocusedLink"
     @dragstart.prevent
   >
     <a

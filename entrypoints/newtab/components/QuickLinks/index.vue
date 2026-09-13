@@ -38,6 +38,7 @@ import QuickLinkItem from './components/QuickLinkItem.vue'
 import type { QuickLinkItemPresentation } from './components/quickLinkItemPresentation'
 import QuickLinkSortableItem from './components/QuickLinkSortableItem.vue'
 import QuickLinksPaginationDots from './components/QuickLinksPaginationDots.vue'
+import QuickLinkVirtualGrid from './components/QuickLinkVirtualGrid.vue'
 import {
   buildQuickLinkDisplayItems,
   buildTopSiteDisplayItems,
@@ -64,6 +65,7 @@ import {
   quickLinkDndId,
   quickLinkGroupDndId,
   quickLinkDndSensors,
+  virtualQuickLinkDndSensors,
   resolveQuickLinkMoveTarget,
   resolveStoreIndexFromSortableIndex,
   toQuickLinkDisplayItem,
@@ -73,10 +75,12 @@ import { useQuickLinkGroupActions } from './composables/useQuickLinkGroupActions
 import { solveGridColumnFirst, usePagedGridLayout } from './composables/useQuickLinksLayout'
 import { useQuickLinksPagination } from './composables/useQuickLinksPagination'
 import { mergeTopSites } from './composables/useTopSitesMerge'
+import { useVirtualQuickLinkDnd, virtualItemKey } from './composables/useVirtualQuickLinkDnd'
 import { rawTopSites } from './utils/topSites'
 const focusStore = useFocusState()
 const settings = useSettingsStore()
 const quickLinksStore = useQuickLinksStore()
+const scrollDnd = useVirtualQuickLinkDnd()
 const { t } = useTranslation()
 
 const { height } = useWindowSize({ type: 'visual' })
@@ -565,6 +569,7 @@ function getQuickLinkMoveTarget(
 }
 
 async function handleQuickLinkDragStart(event: DragStartEvent) {
+  if (settings.quickLinks.useScroll) scrollDnd.start(event)
   const data = getDndData(event.operation.source)
   activeDndData.value = data
   isDragging.value = data?.kind === 'quick-link' || data?.kind === 'quick-link-group'
@@ -576,6 +581,10 @@ async function handleQuickLinkDragStart(event: DragStartEvent) {
 }
 
 function handleQuickLinkDragMove(event: DragMoveEvent) {
+  if (settings.quickLinks.useScroll) {
+    scrollDnd.move(event)
+    return
+  }
   scheduleEdgePageSwitch(getPointerClientPoint(event))
 }
 
@@ -600,6 +609,8 @@ function handleQuickLinkDragOver(event: DragOverEvent) {
 
 async function handleQuickLinkDragEnd(event: DragEndEvent) {
   let shouldRemountDnd = false
+  const virtualDrop = settings.quickLinks.useScroll ? event.suspend() : null
+  const virtualDestination = settings.quickLinks.useScroll ? scrollDnd.destination(event) : null
 
   try {
     clearEdgeSwitchTimer()
@@ -625,7 +636,9 @@ async function handleQuickLinkDragEnd(event: DragEndEvent) {
 
     if (source.kind !== 'quick-link') return
     shouldRemountDnd = source.origin === 'top-sites'
-    const moveTarget = getQuickLinkMoveTarget(source, target, sortableMove)
+    const moveTarget = settings.quickLinks.useScroll
+      ? virtualDestination
+      : getQuickLinkMoveTarget(source, target, sortableMove)
     if (!moveTarget) return
 
     try {
@@ -654,6 +667,11 @@ async function handleQuickLinkDragEnd(event: DragEndEvent) {
       dndRenderKey.value++
     }
     edgeSwitchOccurred = false
+    if (virtualDrop) {
+      await nextTick()
+      virtualDrop.abort()
+      await scrollDnd.finish()
+    }
   }
 }
 
@@ -852,7 +870,7 @@ defineExpose({ refresh, getActiveGroupId })
   >
     <DragDropProvider
       :key="dndRenderKey"
-      :sensors="quickLinkDndSensors"
+      :sensors="settings.quickLinks.useScroll ? virtualQuickLinkDndSensors : quickLinkDndSensors"
       @dragStart="handleQuickLinkDragStart"
       @dragMove="handleQuickLinkDragMove"
       @dragOver="handleQuickLinkDragOver"
@@ -866,7 +884,12 @@ defineExpose({ refresh, getActiveGroupId })
             class="quick-links__scroll-section"
           >
             <h2 v-if="section.title" class="quick-links__scroll-title">{{ section.title }}</h2>
-            <quick-link-drop-target
+            <quick-link-virtual-grid
+              :items="section.items"
+              :columns="displayColumns"
+              :group-id="getDisplayGroupId(section.groupId)"
+              :controller="scrollDnd"
+              :add="!section.isTopSites"
               :id="quickLinkContainerDndId('quick-links', getDisplayGroupId(section.groupId))"
               class="quick-links__container quick-links__scroll-grid"
               :class="containerBaseClasses"
@@ -880,21 +903,16 @@ defineExpose({ refresh, getActiveGroupId })
                 storeIndex: getItemGroupSize(getDisplayGroupId(section.groupId)),
               }"
             >
-              <template v-for="item in section.items" :key="getDisplayItemKey(section.key, item)">
+              <template #default="{ item }">
                 <quick-link-sortable-item
-                  :id="
-                    quickLinkDndId(
-                      'quick-links',
-                      getItemDndGroupId(item, section.groupId),
-                      item.originalIndex,
-                      item.url,
-                    )
-                  "
+                  :id="virtualItemKey(item)"
+                  manual
                   :index="getItemSortableIndex(item)"
                   :group="getItemDndGroupId(item, section.groupId)"
                   :disabled="getItemDndDisabled(item)"
                   :data="{
                     kind: 'quick-link',
+                    id: item.id,
                     source: 'quick-links',
                     groupId: getItemDndGroupId(item, section.groupId),
                     sortableIndex: getItemSortableIndex(item),
@@ -909,6 +927,7 @@ defineExpose({ refresh, getActiveGroupId })
                   @touch-menu="handleQuickLinkTouchMenu"
                 >
                   <quick-link-item
+                    keyboard-drag
                     :url="item.url"
                     :title="item.title"
                     :favicon="item.favicon"
@@ -919,13 +938,15 @@ defineExpose({ refresh, getActiveGroupId })
                   />
                 </quick-link-sortable-item>
               </template>
-              <add-quick-link
-                v-if="!section.isTopSites"
-                :presentation="quickLinkItemPresentation"
-                :show-button="true"
-                :on-open="() => openAddQuickLinkForSection(section)"
-              />
-            </quick-link-drop-target>
+              <template #add>
+                <add-quick-link
+                  v-if="!section.isTopSites"
+                  :presentation="quickLinkItemPresentation"
+                  :show-button="true"
+                  :on-open="() => openAddQuickLinkForSection(section)"
+                />
+              </template>
+            </quick-link-virtual-grid>
           </section>
         </div>
         <el-space
