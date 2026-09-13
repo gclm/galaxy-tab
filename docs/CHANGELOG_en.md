@@ -20,6 +20,8 @@
 - **Search:** Added an option to disable search suggestions.
 - **Search:** Added an option to left-align search input text.
 - **Search:** Added a Tips shortcut in the search-engine menu on the left side of the search box to open Search Preferences directly.
+- **Search:** Added direct navigation to the target URL when entering a URL.
+- **Search:** Added inline calculation results when entering an expression.
 - **Bookmarks:** When adding a bookmark to Quick Links, the current Quick Links group is selected by default.
 - **Bookmarks:** Added remembered width for the bookmarks sidebar.
 - **Launchpad:** Added an icon-size control.
@@ -33,12 +35,13 @@
 
 ### Improvements⚡️
 
-- **Search:** Improved search-suggestion performance.
+- Improved performance across modules for faster responses and lower memory usage.
 - **Quick Links:** In grouped mode, changed the Top Sites context-menu label from “Pin” to “Add to Quick Links”.
 - **Quick Links:** Improved Quick Links performance.
 - **Bookmarks:** Improved bookmarks-sidebar loading and sorting performance.
 - **Bookmarks:** Improved the interaction for dragging to reorder bookmarks.
 - Removed third-party favicon services to reduce extra third-party requests.
+- Limited concurrent favicon fetches to prevent a burst of requests.
 - Clearing wallpaper or icon caches now reloads open new-tab pages and provides clearer failure hints and recovery.
 - Simplified some settings UI wording and reordered options.
 
@@ -52,6 +55,8 @@
 - Fixed incorrect clock and quote text colors in inverted-color mode.
 - Fixed the Popup menu failing to load.
 - Fixed Quick Links icons jumping during pagination at certain page widths, and prevented titles from the previous or next pages from being visible.
+- Fixed keyboard navigation clearing the search box and triggering new search suggestions.
+- Fixed styling issues in some components.
 
 ## 3.5.0 (Aug 01, 2026)
 
